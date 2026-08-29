@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { access, readdir } from "node:fs/promises";
+import { access, readFile, readdir } from "node:fs/promises";
 import { constants } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -8,6 +8,7 @@ import { EDITORIAL_TOPICS } from "../src/lib/integrated-editorial.ts";
 import {
   LLMS_DISCOVERY_PATHS,
   PUBLIC_INDEXABLE_PATHS,
+  PUBLIC_NOINDEX_PATHS,
   publicRobots,
   publicSitemap,
 } from "../src/lib/public-discovery.ts";
@@ -38,6 +39,11 @@ async function collectStaticPagePaths(directory, segments = []) {
 test("the public discovery catalog is canonical, unique and complete for static pages", async () => {
   assert.equal(PUBLIC_SITE_URL, "https://www.dovevannoinostrisoldi.com");
   assert.equal(new Set(PUBLIC_INDEXABLE_PATHS).size, PUBLIC_INDEXABLE_PATHS.length);
+  assert.equal(new Set(PUBLIC_NOINDEX_PATHS).size, PUBLIC_NOINDEX_PATHS.length);
+  assert.deepEqual(
+    PUBLIC_NOINDEX_PATHS.filter((routePath) => PUBLIC_INDEXABLE_PATHS.includes(routePath)),
+    [],
+  );
 
   for (const routePath of PUBLIC_INDEXABLE_PATHS) {
     const url = new URL(routePath, PUBLIC_SITE_URL);
@@ -51,13 +57,26 @@ test("the public discovery catalog is canonical, unique and complete for static 
   }
 
   const staticPages = (await collectStaticPagePaths(appRoot)).sort();
-  const catalogStaticPages = PUBLIC_INDEXABLE_PATHS
-    .filter((routePath) => !EDITORIAL_TOPICS.some(
+  const catalogStaticPages = [
+    ...PUBLIC_INDEXABLE_PATHS.filter((routePath) => !EDITORIAL_TOPICS.some(
       (topic) => routePath === `/${topic.section}/${topic.slug}`,
-    ))
+    )),
+    ...PUBLIC_NOINDEX_PATHS,
+  ]
     .slice()
     .sort();
   assert.deepEqual(catalogStaticPages, staticPages);
+});
+
+test("search results stay crawlable for noindex while remaining outside the sitemap", async () => {
+  assert.deepEqual(PUBLIC_NOINDEX_PATHS, ["/cerca"]);
+  assert.equal(PUBLIC_INDEXABLE_PATHS.includes("/cerca"), false);
+
+  const searchPage = await readFile(path.join(appRoot, "cerca", "page.tsx"), "utf8");
+  assert.match(searchPage, /robots:\s*\{\s*index:\s*false,\s*follow:\s*true\s*,?\s*\}/);
+
+  const robots = publicRobots(PUBLIC_SITE_URL);
+  assert.equal(robots.rules.disallow.includes("/cerca"), false);
 });
 
 test("all and only the statically generated editorial topics are in the sitemap catalog", () => {

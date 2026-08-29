@@ -82,6 +82,11 @@ export const PUBLIC_INDEXABLE_PATHS = [
   "/confronti/catalogo",
 ] as const satisfies readonly PublicPath[];
 
+/** Public pages that crawlers may visit but must not index. */
+export const PUBLIC_NOINDEX_PATHS = [
+  "/cerca",
+] as const satisfies readonly PublicPath[];
+
 /** Pages that the concise llms.txt overview must always expose. */
 export const LLMS_DISCOVERY_PATHS = [
   "/",
