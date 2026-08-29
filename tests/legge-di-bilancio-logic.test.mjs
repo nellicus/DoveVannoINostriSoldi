@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFile } from "node:fs/promises";
 import test from "node:test";
 import "./helpers/register-ts-alias.mjs";
 
@@ -8,6 +9,17 @@ const { computePlan, computeVerdict, clampPct, netToneColor } = await import(
 const { encodePiano, decodePiano, orderedMissionList } = await import(
   "../src/app/spese/legge-di-bilancio/piano-codec.ts"
 );
+
+test("share dialog closes through the native Escape cancel request", async () => {
+  const source = await readFile(
+    new URL("../src/app/spese/legge-di-bilancio/ShareDialog.tsx", import.meta.url),
+    "utf8",
+  );
+  assert.match(
+    source,
+    /onCancel=\{\(event\) => \{\s*event\.preventDefault\(\);\s*onClose\(\);\s*\}\}/,
+  );
+});
 
 const SUMMARIES = [
   { mission: "Tutela della salute", latestAmountEur: 200_000_000_000, realDeltaPct: 1.5 },

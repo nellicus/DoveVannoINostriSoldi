@@ -102,6 +102,10 @@ export function ShareDialog({
       ref={dialogRef}
       className={styles.shareDialog}
       aria-labelledby={titleId}
+      onCancel={(event) => {
+        event.preventDefault();
+        onClose();
+      }}
       onClose={onClose}
       onClick={(event) => {
         if (event.target === dialogRef.current) onClose();
