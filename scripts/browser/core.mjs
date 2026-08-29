@@ -1870,6 +1870,13 @@ try {
     completed.push(label);
   }
 
+  // The budget simulator renders a dense interactive SVG after dozens of
+  // prior pages. Start it in a fresh Chromium process so protocol state and
+  // renderer memory from unrelated scenarios cannot turn a real assertion
+  // into a CDP timeout. Assertions and page state remain unchanged.
+  await closeBrowser(browser);
+  browser = await launchBrowser();
+
   for (const width of [390, 768, 1280]) {
     const label = `Legge di Bilancio modifica→condivisione ${width}px`;
     await runScenario(browser, {
