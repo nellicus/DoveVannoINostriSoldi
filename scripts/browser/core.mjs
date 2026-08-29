@@ -1870,13 +1870,6 @@ try {
     completed.push(label);
   }
 
-  // The budget simulator renders a dense interactive SVG after dozens of
-  // prior pages. Start it in a fresh Chromium process so protocol state and
-  // renderer memory from unrelated scenarios cannot turn a real assertion
-  // into a CDP timeout. Assertions and page state remain unchanged.
-  await closeBrowser(browser);
-  browser = await launchBrowser();
-
   for (const width of [390, 768, 1280]) {
     const label = `Legge di Bilancio modifica→condivisione ${width}px`;
     await runScenario(browser, {
@@ -1915,6 +1908,18 @@ try {
           `${label}: lo scenario dovrebbe partire da zero`,
         );
 
+        let planNavigationRequests = 0;
+        const countPlanNavigation = (request) => {
+          const url = new URL(request.url());
+          if (
+            url.pathname === "/spese/legge-di-bilancio" &&
+            (request.headers().rsc === "1" || url.searchParams.has("_rsc"))
+          ) {
+            planNavigationRequests += 1;
+          }
+        };
+        page.on("request", countPlanNavigation);
+
         // Tastiera: sposta lo slider di +5 punti (5 passi da 1), come premere «+5».
         await page.focus(sliderSelector);
         for (let step = 0; step < 5; step += 1) await page.keyboard.press("ArrowRight");
@@ -1922,6 +1927,16 @@ try {
           (selector) => Number(document.querySelector(selector)?.value) === 5,
           {},
           sliderSelector,
+        );
+        await page.waitForFunction(() => new URL(window.location.href).searchParams.has("piano"));
+        await page.evaluate(
+          () => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))),
+        );
+        page.off("request", countPlanNavigation);
+        assert.equal(
+          planNavigationRequests,
+          0,
+          `${label}: modificare il piano ha avviato una navigazione RSC`,
         );
 
         await page.waitForFunction(

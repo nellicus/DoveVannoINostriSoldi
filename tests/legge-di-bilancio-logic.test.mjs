@@ -21,6 +21,15 @@ test("share dialog closes through the native Escape cancel request", async () =>
   );
 });
 
+test("budget plan updates the URL without a server navigation", async () => {
+  const source = await readFile(
+    new URL("../src/app/spese/legge-di-bilancio/SimulatoreClient.tsx", import.meta.url),
+    "utf8",
+  );
+  assert.match(source, /window\.history\.replaceState\(null,/);
+  assert.doesNotMatch(source, /useRouter|router\.replace/);
+});
+
 const SUMMARIES = [
   { mission: "Tutela della salute", latestAmountEur: 200_000_000_000, realDeltaPct: 1.5 },
   { mission: "Istruzione scolastica", latestAmountEur: 60_000_000_000, realDeltaPct: 0 },

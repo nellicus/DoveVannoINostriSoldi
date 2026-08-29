@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 import { PUBLIC_SITE_URL } from "@/lib/site";
 import {
   Bar,
@@ -109,7 +109,6 @@ export function SimulatoreClient({
   initialScenario?: Record<string, number>;
 }) {
   const patternId = useId();
-  const router = useRouter();
   const pathname = usePathname();
   const orderedMissions = useMemo(() => orderedMissionList(missions), [missions]);
   const latestYear = years.at(-1) ?? null;
@@ -164,12 +163,14 @@ export function SimulatoreClient({
     if (encoded) params.set("piano", encoded);
     else params.delete("piano");
     const query = params.toString();
-    router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false });
-  }, [scenarioByMission, orderedMissions, router, pathname]);
+    // Il piano è già nello stato React: aggiornare solo la cronologia evita
+    // una nuova navigazione server e il conseguente refetch dei dati OpenBDAP.
+    window.history.replaceState(null, "", query ? `${pathname}?${query}` : pathname);
+  }, [scenarioByMission, orderedMissions, pathname]);
 
   // Calcolato dallo stato React, non da window.location: il link è sempre
   // coerente con il piano corrente anche se lo condividi subito dopo averlo
-  // toccato, prima che router.replace abbia aggiornato l'URL del browser.
+  // toccato, prima che l'effetto abbia aggiornato l'URL del browser.
   const shareUrl = useMemo(() => {
     const encoded = encodePiano(scenarioByMission, orderedMissions);
     return `${PUBLIC_SITE_URL}${pathname}${encoded ? `?piano=${encoded}` : ""}`;
