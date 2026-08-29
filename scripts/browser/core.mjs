@@ -829,6 +829,70 @@ try {
   });
   completed.push("Atlante Imprese query navigation 390px");
 
+  await runScenario(browser, {
+    label: "Navigazione mobile accessibile 390px",
+    pathname: "/",
+    width: 390,
+    validate: async (page) => {
+      await page.waitForFunction(() => {
+        const sidebar = document.querySelector("#dashboard-sidebar");
+        return sidebar?.inert === true && sidebar.getAttribute("aria-hidden") === "true";
+      });
+
+      const searchBounds = await page.$eval("#global-site-search", (input) => {
+        const rect = input.getBoundingClientRect();
+        return { left: rect.left, right: rect.right, viewport: innerWidth };
+      });
+      assert.ok(searchBounds.left >= 0, "Navigazione mobile: ricerca tagliata a sinistra");
+      assert.ok(
+        searchBounds.right <= searchBounds.viewport,
+        "Navigazione mobile: ricerca oltre il bordo destro",
+      );
+
+      const mobileToggle = await page.$('button[aria-controls="dashboard-sidebar"]');
+      assert.ok(mobileToggle, "Navigazione mobile: pulsante menu assente");
+      await mobileToggle.focus();
+      for (let index = 0; index < 8; index += 1) {
+        await page.keyboard.press("Tab");
+        assert.equal(
+          await page.evaluate(() => Boolean(document.activeElement?.closest("#dashboard-sidebar"))),
+          false,
+          "Navigazione mobile: il focus entra nel drawer chiuso",
+        );
+      }
+
+      await mobileToggle.click();
+      await page.waitForFunction(() =>
+        document.querySelector("#dashboard-sidebar")?.contains(document.activeElement),
+      );
+      await page.keyboard.press("Escape");
+      await page.waitForFunction(() =>
+        document.activeElement === document.querySelector('button[aria-controls="dashboard-sidebar"]'),
+      );
+
+      await mobileToggle.click();
+      await page.waitForFunction(() =>
+        document.querySelector("#dashboard-sidebar")?.contains(document.activeElement),
+      );
+      await page.setViewport({ width: 1280, height: 900 });
+      await page.waitForFunction(() => {
+        const sidebar = document.querySelector("#dashboard-sidebar");
+        return sidebar?.inert === false &&
+          sidebar.getAttribute("data-mobile-open") !== "true" &&
+          document.body.style.overflow !== "hidden";
+      });
+      await page.setViewport({ width: 390, height: 900 });
+      await page.waitForFunction(() => {
+        const sidebar = document.querySelector("#dashboard-sidebar");
+        const toggle = document.querySelector('button[aria-controls="dashboard-sidebar"]');
+        return sidebar?.inert === true &&
+          sidebar.getAttribute("data-mobile-open") !== "true" &&
+          document.activeElement === toggle;
+      });
+    },
+  });
+  completed.push("Navigazione mobile accessibile 390px");
+
   for (const width of [390, 768, 1280]) {
     const label = `Scheda economica Benevento ${width}px`;
     await runScenario(browser, {
@@ -1449,6 +1513,70 @@ try {
     },
   });
   completed.push("Ricerca header Escape 390px");
+
+  await runScenario(browser, {
+    label: "Ricerca header spazi e abort 390px",
+    pathname: "/",
+    width: 390,
+    validate: async (page) => {
+      await page.evaluate(() => {
+        const originalFetch = window.fetch.bind(window);
+        const state = { aborts: 0, calls: 0 };
+        Object.defineProperty(window, "__dvnsSearchMock", { value: state, configurable: true });
+        window.fetch = async (input, init) => {
+          const url = new URL(String(input), window.location.href);
+          if (url.pathname !== "/api/search") return originalFetch(input, init);
+          state.calls += 1;
+          if (state.calls === 1) {
+            return new Promise((_resolve, reject) => {
+              init?.signal?.addEventListener("abort", () => {
+                state.aborts += 1;
+                reject(init.signal.reason ?? new DOMException("Aborted", "AbortError"));
+              }, { once: true });
+            });
+          }
+          return new Response(JSON.stringify({
+            ok: true,
+            query: "Roma",
+            groups: [{
+              type: "pagina",
+              label: "Pagine",
+              results: [{
+                id: "page:territori",
+                href: "/territori",
+                title: "Territori",
+                context: "Confronti territoriali",
+                type: "pagina",
+                description: "Dati regionali e comunali",
+                match: { reason: "title", label: "Titolo" },
+                score: 2000,
+              }],
+            }],
+            total: 1,
+            hasMore: false,
+            staticTotal: 1,
+            entityTotal: 0,
+            entitiesAvailable: true,
+          }), { headers: { "content-type": "application/json" } });
+        };
+      });
+
+      const input = await page.$("#global-site-search");
+      assert.ok(input, "Ricerca header spazi: campo assente");
+      await input.type("Roma");
+      await page.waitForFunction(() => window.__dvnsSearchMock?.calls === 1);
+      await input.type(" ");
+      await page.waitForSelector('[role="listbox"] [role="option"]', { visible: true });
+      const state = await page.evaluate(() => ({
+        aborts: window.__dvnsSearchMock?.aborts,
+        calls: window.__dvnsSearchMock?.calls,
+        loading: document.body.innerText.includes("Cerco nel sito"),
+        value: document.querySelector("#global-site-search")?.value,
+      }));
+      assert.deepEqual(state, { aborts: 1, calls: 2, loading: false, value: "Roma " });
+    },
+  });
+  completed.push("Ricerca header spazi e abort 390px");
 
   await runScenario(browser, {
     label: "Ricerca header errore 390px",
