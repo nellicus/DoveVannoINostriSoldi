@@ -1,442 +1,181 @@
+import type { CSSProperties } from "react";
 import Link from "next/link";
+import {
+  Alert02Icon, ArrowDown01Icon, ArrowRight01Icon,
+  Building03Icon, CheckmarkCircle02Icon, Database01Icon, FilterHorizontalIcon,
+  Location01Icon, Money03Icon, UserMultiple02Icon,
+} from "@hugeicons/core-free-icons";
+import { HugeiconsIcon } from "@hugeicons/react";
+import { HomeMapPanel } from "@/components/home-map-panel";
+import { HomeTrendPanel } from "@/components/home-trend-panel";
 import { InfoTooltip } from "@/components/info-tooltip";
-import { ItalyRegionsMap } from "@/components/italy-regions-map";
-import { PeriodSelector } from "@/components/period-selector";
-import { SpendingComposition, type CompositionFamily } from "@/components/spending-composition";
-import { getProcurementComparisonForYear } from "@/lib/audit-data";
-import {
-  billions,
-  compactEuro,
-  compactEuroLike,
-  exactEuro,
-  integer,
-  longDate,
-  percent,
-} from "@/lib/format";
-import { municipalityName } from "@/lib/municipality-name";
-import { openCoesioneSnapshot as cohesion } from "@/lib/opencoesione-snapshot";
-import {
-  HOME_SPENDING_BUCKETS,
-  PASS_THROUGH_TITLE_CODE,
-} from "@/lib/siope-titles";
-import {
-  availableSiopeYears,
-  completedMonths,
-  getSiopeMunicipalSnapshot,
-  municipalitiesByPerCapita,
-  regionsByPerCapita,
-  partialMonth,
-} from "@/lib/siope-snapshot";
+import { RegionCrest } from "@/components/region-crest";
+import { anacCigSnapshot } from "@/lib/anac-cig-snapshot";
+import { auditReviewedAt, auditSignals, getHomeAnomalySignals, procurementReducedCompetition2025, type AuditSignal } from "@/lib/audit-data";
+import { compactEuro, exactEuro, integer, longDate, percent } from "@/lib/format";
+import { getSiopeProvincePoints } from "@/lib/siope-municipality-detail";
+import { HOME_SPENDING_BUCKETS } from "@/lib/siope-titles";
+import { availableSiopeYears, getSiopeMunicipalSnapshot, regionsByPerCapita } from "@/lib/siope-snapshot";
+import { istatCodeOfRegion } from "@/lib/italy-regions";
+import { publicSources, sourceCounts } from "@/lib/sources";
 import styles from "./home.module.css";
 
-const COMPOSITION_FAMILIES: CompositionFamily[] = [
-  "services",
-  "investment",
-  "pass-through",
-  "financing",
-  "other",
-];
+const CHART_COLORS = ["#315edb", "#68a1ef", "#32b979", "#f2ad3d", "#536579"];
+const HOME_SOURCE_MARKS = [
+  { slug: "siope", mark: "RGS", label: "SIOPE\nPagamenti comunali" },
+  { slug: "ipa", mark: "IPA", label: "Indice delle\nPA" },
+  { slug: "anac", mark: "ANAC", label: "Contratti\npubblici" },
+  { slug: "istat", mark: "ISTAT", label: "Confini\namministrativi" },
+] as const;
 
 function selectedYear(value: string | string[] | undefined): number {
   const parsed = Number.parseInt(Array.isArray(value) ? value[0] ?? "" : value ?? "", 10);
   return availableSiopeYears.includes(parsed) ? parsed : availableSiopeYears[0];
 }
 
-export default async function HomePage({
-  searchParams,
-}: {
-  searchParams: Promise<{ anno?: string | string[] }>;
-}) {
+function anomalyValue(signal: AuditSignal): string {
+  const base = signal.unit === "percent" ? percent(signal.value)
+    : signal.unit === "billion-euro" ? `${signal.value.toLocaleString("it-IT", { maximumFractionDigits: 1 })} mld €`
+      : signal.unit === "million-euro" ? `${signal.value.toLocaleString("it-IT", { maximumFractionDigits: 1 })} mln €`
+        : integer(signal.value);
+  if (signal.valueQualifier === "over") return `oltre ${base}`;
+  if (signal.valueQualifier === "about") return `circa ${base}`;
+  return base;
+}
+
+function points(values: readonly number[], width = 104, height = 34): string {
+  if (values.length < 2) return "";
+  const min = Math.min(...values);
+  const span = Math.max(...values) - min || 1;
+  return values.map((value, index) => {
+    const x = (index / (values.length - 1)) * width;
+    const y = height - 3 - ((value - min) / span) * (height - 8);
+    return `${x.toFixed(1)},${y.toFixed(1)}`;
+  }).join(" ");
+}
+
+function Sparkline({ values, tone = "blue" }: { values: readonly number[]; tone?: "blue" | "green" | "red" }) {
+  return <svg className={styles.sparkline} viewBox="0 0 104 34" aria-hidden="true"><polyline className={styles[tone]} points={points(values)} /></svg>;
+}
+
+export default async function HomePage({ searchParams }: { searchParams: Promise<{ anno?: string | string[] }> }) {
   const year = selectedYear((await searchParams).anno);
   const siope = getSiopeMunicipalSnapshot(year);
+  const provinces = getSiopeProvincePoints(year);
   const monthLabel = siope.latestMonthLabel.toLocaleLowerCase("it-IT");
-  const period = `da gennaio a ${monthLabel} ${siope.year}`;
-
-  const passThrough =
-    siope.titles.find((title) => title.code === PASS_THROUGH_TITLE_CODE)?.value ?? 0;
-  const netPayments = siope.totalPaid - passThrough;
-
-  const runningMonth = partialMonth(siope);
-  const settledMonths = completedMonths(siope);
-  const completedAverage =
-    settledMonths.length > 0
-      ? settledMonths.reduce((sum, point) => sum + point.flow, 0) / settledMonths.length
-      : 0;
-  const lastCompleted = settledMonths[settledMonths.length - 1] ?? null;
-
+  const period = `da gennaio a ${monthLabel} ${year}`;
+  const periodLabel = siope.distribution.period.completeness === "partial"
+    ? `${year} · gen-${monthLabel.slice(0, 3)}`
+    : String(year);
   const valueByCode = new Map(siope.titles.map((title) => [title.code, title.value]));
-  const buckets = HOME_SPENDING_BUCKETS.map((bucket, index) => {
-    const value = bucket.codes.reduce((sum, code) => sum + (valueByCode.get(code) ?? 0), 0);
-    return {
-      ...bucket,
-      id: bucket.codes.join("-"),
-      value,
-      family: COMPOSITION_FAMILIES[index],
-    };
+  const buckets = HOME_SPENDING_BUCKETS.map((bucket) => ({
+    name: bucket.shortName,
+    value: bucket.codes.reduce((sum, code) => sum + (valueByCode.get(code) ?? 0), 0),
+  })).sort((left, right) => right.value - left.value);
+  const bucketTotal = buckets.reduce((sum, bucket) => sum + bucket.value, 0) || 1;
+  const donutGradient = buckets.map((bucket, index) => {
+    const start = buckets.slice(0, index).reduce((sum, item) => sum + item.value, 0) / bucketTotal * 100;
+    const end = start + (bucket.value / bucketTotal) * 100;
+    return `${CHART_COLORS[index]} ${start.toFixed(2)}% ${end.toFixed(2)}%`;
+  }).join(", ");
+  const rankedRegions = regionsByPerCapita(siope).slice(0, 10);
+  const benchmarkRegions = rankedRegions.slice(0, 7);
+  const regionMax = Math.max(...benchmarkRegions.map((region) => region.perCapita ?? 0), 1);
+  const anomalySignals = getHomeAnomalySignals();
+  const extraSignalIds = new Set(["tax-expenditures", "off-budget-debt"]);
+  const anomalyRows = [...anomalySignals, ...auditSignals.filter((signal) => extraSignalIds.has(signal.id))].slice(0, 5);
+  const homeSources = HOME_SOURCE_MARKS.map((presentation) => {
+    const source = publicSources.find((candidate) => candidate.slug === presentation.slug);
+    if (!source) throw new Error(`Fonte homepage non registrata: ${presentation.slug}`);
+    return { ...presentation, source };
   });
 
-  const topRegions = regionsByPerCapita(siope).slice(0, 6);
-  const topMunicipalities = municipalitiesByPerCapita(siope).slice(0, 5);
-  /* One unit for the absolute-value comparison column. */
-  const topRegionScale = topRegions[0]?.value ?? 0;
-  const maxFlow = Math.max(...siope.monthly.map((point) => point.flow), 0);
-
-  const cohesionForYear = cohesion.annualSeries.find((point) => point.year === year) ?? null;
-  const cohesionPaid = (cohesionForYear?.paymentsCents ?? 0) / 100;
-  const cohesionCommitted = (cohesionForYear?.commitmentsCents ?? 0) / 100;
-  const cohesionRatio =
-    cohesionCommitted > 0 ? (cohesionPaid / cohesionCommitted) * 100 : 0;
-  const procurement = getProcurementComparisonForYear(year);
-
   return (
-    <main className={`shell ${styles.dashboard}`}>
-      <h1 className={styles.pageTitle}>Dove vanno i nostri soldi pubblici</h1>
-      <div className={styles.column}>
-        <section className="panel">
-          <div className={styles.panelHead}>
-            <h2 className="panel-title">Pagamenti effettuati dai Comuni</h2>
-            <InfoTooltip id="cash-payments-tip" label="Che cosa sono i pagamenti di cassa?">
-              Uscite di cassa registrate dai Comuni, mese per mese. Il totale riguarda i Comuni;
-              restano fuori Stato centrale, Regioni e sanità.
-            </InfoTooltip>
-          </div>
+    <main className={`shell ${styles.dashboard}`} data-dashboard-home>
+      <header className={styles.dashboardHeader}>
+        <div className={styles.dashboardTitle}>
+          <span className={styles.dashboardTitleIcon} aria-hidden="true">
+            <svg viewBox="0 0 48 36"><path d="M1 18h5l4-10 6 21 7-26 7 31 6-18h5l6-7" /></svg>
+          </span>
+          <div><h1>Panoramica Italia</h1><p>Pagamenti comunali e altri dati pubblici, con perimetri separati.</p><small>SIOPE comunale aggiornato al {longDate(siope.source.siopeMovementsLastModified)}</small></div>
+          <InfoTooltip id="cash-payments-tip" label="Che cosa sono i pagamenti di cassa?">
+            Uscite di cassa registrate dai Comuni, mese per mese. Il totale riguarda i Comuni;
+            restano fuori Stato centrale, Regioni e sanità.
+          </InfoTooltip>
+        </div>
+        <div className={styles.dashboardFilters}>
+          <details className={styles.filterBox}>
+            <summary><span>Periodo SIOPE</span><strong>{periodLabel}</strong><HugeiconsIcon icon={ArrowDown01Icon} size={13} /></summary>
+            <div>{availableSiopeYears.map((option) => <Link key={option} href={`/?anno=${option}`}>{option}</Link>)}</div>
+          </details>
+          <div className={styles.filterBoxStatic}><span>Livello geografico</span><strong>Nazionale</strong></div>
+          <Link className={styles.advancedFilter} href="/cerca"><HugeiconsIcon icon={FilterHorizontalIcon} size={15} strokeWidth={1.7} />Filtri avanzati</Link>
+        </div>
+      </header>
 
-          <p className={styles.freshness}>
-            <i aria-hidden="true" />
-            Dati aggiornati al {longDate(siope.source.siopeMovementsLastModified)}
-          </p>
+      <section className={styles.summaryGrid} aria-label="Indicatori principali">
+        <article><span><HugeiconsIcon icon={Money03Icon} size={15} /> Pagamenti comunali</span><strong>{compactEuro(siope.totalPaid)}</strong><small className={styles.positive}>flussi di cassa SIOPE {year}</small><Sparkline values={siope.monthly.map((point) => point.flow)} tone="green" /></article>
+        <article><span><HugeiconsIcon icon={Building03Icon} size={15} /> Comuni con pagamenti</span><strong>{integer(siope.coverage.withMovements)}</strong><small>su {integer(siope.coverage.activeSiopeMunicipalities)} Comuni SIOPE validi</small></article>
+        <article><span><HugeiconsIcon icon={Database01Icon} size={15} /> Contratti 2025</span><strong>{integer(anacCigSnapshot.population.records)}</strong><small>CIG unici nello snapshot annuale ANAC</small></article>
+        <article><span><HugeiconsIcon icon={UserMultiple02Icon} size={15} /> Popolazione associata</span><strong>{integer(siope.populationCovered)}</strong><small>denominatore dei Comuni inclusi nello snapshot</small></article>
+        <article className={styles.warningMetric}><span><HugeiconsIcon icon={Alert02Icon} size={15} /> Confronto ridotto · ANAC 2025</span><strong>{procurementReducedCompetition2025.totalBillion.toLocaleString("it-IT", { maximumFractionDigits: 1 })} mld €</strong><small>{procurementReducedCompetition2025.byValue.toLocaleString("it-IT")}% del valore delle procedure da 40.000 € in su; non spreco provato</small></article>
+        <article className={styles.warningMetric}><span><HugeiconsIcon icon={Alert02Icon} size={15} /> Segnali mostrati</span><strong>{integer(anomalyRows.length)}</strong><small>fenomeni documentati con perimetri distinti</small></article>
+      </section>
 
-          <strong className={styles.headline}>{compactEuro(siope.totalPaid)}</strong>
-          <p className={styles.headlineNote}>
-            Da gennaio a {monthLabel} {siope.year}, in tutta Italia
-          </p>
+      <HomeMapPanel
+        className={styles.mapStage}
+        regions={siope.regions}
+        provinces={provinces}
+        period={period}
+        year={year}
+        nationalTotal={siope.totalPaid}
+        nationalPerCapita={siope.nationalPerCapita}
+        municipalitiesWithoutRegion={siope.coverage.withoutRegion}
+        paymentsWithoutRegion={siope.coverage.paymentsWithoutRegion}
+      />
 
-          <dl className={styles.factRows}>
-            <div>
-              <dt>In media per abitante</dt>
-              <dd>
-                {siope.nationalPerCapita === null
-                  ? "n.d."
-                  : exactEuro(siope.nationalPerCapita)}
-              </dd>
-            </div>
-            <div>
-              <dt>Pagamenti al netto delle partite di giro</dt>
-              <dd>{compactEuro(netPayments)}</dd>
-            </div>
-            <div>
-              <dt>Media dei mesi completi</dt>
-              <dd>{compactEuro(completedAverage)}</dd>
-            </div>
-          </dl>
-
-          <hr className={styles.rule} />
-
-          <div className={styles.panelHead}>
-            <h2 className="panel-title">Come si compone il totale</h2>
-          </div>
-          <SpendingComposition
-            state={{ kind: "ready", totalEuro: siope.totalPaid, items: buckets.map((bucket) => ({
-              id: bucket.id,
-              label: bucket.name,
-              valueEuro: bucket.value,
-              explanation: bucket.explanation,
-              family: bucket.family,
-            })) }}
-            period={`Da gennaio a ${siope.latestMonthLabel.toLocaleLowerCase("it-IT")} ${siope.year}`}
-            scope="Pagamenti di cassa dei Comuni in tutta Italia"
-            denominator="totale dei pagamenti SIOPE dei Comuni nel periodo"
-            source={{
-              label: `${siope.source.siopeOwner} · SIOPE`,
-              href: siope.source.siopeMovementsUrl,
-              observedAt: longDate(siope.source.observedAt),
-            }}
-          />
-          <Link
-            className={`btn btn-block ${styles.spendingDetailsLink}`}
-            href={`/spese?anno=${year}`}
-          >
-            Vedi il dettaglio delle voci
-          </Link>
-        </section>
-
-      </div>
-
-      <div className={styles.column}>
-        <section className="panel">
-          <div className={styles.panelHead}>
-            <h2 className="panel-title">Dove si spende di più, regione per regione</h2>
-            <PeriodSelector activeYear={year} years={availableSiopeYears} pathname="/" />
-          </div>
-
-          <ItalyRegionsMap
-            regions={siope.regions}
-            period={period}
-            aside={
-              <div className={styles.mapStats}>
-                <div>
-                  <span>Da gennaio a {monthLabel}</span>
-                  <strong>{compactEuro(siope.totalPaid)}</strong>
-                  <small>
-                    totale nazionale dei Comuni · {compactEuro(siope.coverage.paymentsWithoutRegion)}
-                    {" "}senza Regione IPA non mappati
-                  </small>
-                </div>
-                <div>
-                  <span>Ultimo mese completo</span>
-                  <strong>{lastCompleted ? compactEuro(lastCompleted.flow) : "n.d."}</strong>
-                  <small>
-                    {lastCompleted
-                      ? `${lastCompleted.label.toLocaleLowerCase("it-IT")} ${siope.year}`
-                      : "nessun mese chiuso"}
-                  </small>
-                </div>
-                <div>
-                  <span>In media per abitante</span>
-                  <strong>
-                    {siope.nationalPerCapita === null
-                      ? "n.d."
-                      : exactEuro(siope.nationalPerCapita)}
-                  </strong>
-                  <small>su {integer(siope.populationCovered)} persone</small>
-                </div>
-                <div>
-                  <span>Comuni inclusi</span>
-                  <strong>{integer(siope.coverage.withMovements)}</strong>
-                  <small>
-                    su {integer(siope.coverage.activeSiopeMunicipalities)} validi nel periodo
-                  </small>
-                </div>
-              </div>
-            }
-          />
-
-          <p className={styles.attribution}>
-            Confini amministrativi a fini statistici:{" "}
-            <a
-              href="https://www.istat.it/storage/cartografia/confini_amministrativi/generalizzati/2026/Limiti01012026_g.zip"
-              target="_blank"
-              rel="noreferrer"
-            >
-              ISTAT, 1 gennaio 2026
+      <section className={`${styles.panel} ${styles.anomalyPanel}`}>
+        <div className={styles.panelHead}><h2>Segnali pubblici da approfondire</h2><Link href="/controlli">Vedi tutti <HugeiconsIcon icon={ArrowRight01Icon} size={12} /></Link></div>
+        <div className={styles.anomalyGallery}>
+          {anomalyRows.map((signal) => (
+            <a key={signal.id} href={signal.source.url} target="_blank" rel="noreferrer" className={styles.anomalyRow} title={signal.source.title}>
+              <i className={styles.anomalyMarker}><HugeiconsIcon icon={Alert02Icon} size={13} /></i>
+              <span><b>{signal.area.toLocaleUpperCase("it-IT")}</b><small>{signal.label}</small></span>
+              <span><strong>{signal.source.institution}</strong><small>{signal.referenceDate} · {signal.coverage}</small></span>
+              <em>{anomalyValue(signal)}</em><mark>VERIFICA</mark><HugeiconsIcon icon={ArrowRight01Icon} size={12} />
             </a>
-            ,{" "}
-            <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noreferrer">
-              CC BY 4.0
-            </a>
-            , geometria semplificata.
-          </p>
-        </section>
+          ))}
+        </div>
+        <p className={styles.anomalyCaveat}>Report ufficiali rivisti manualmente il {longDate(`${auditReviewedAt}T00:00:00Z`)}. Segnale da verificare, non prova; perimetri diversi e non additivi.</p>
+        {anomalySignals.length < 3 ? <Link className={styles.fallbackLink} href="/controlli">Esplora gli altri controlli</Link> : null}
+      </section>
 
-        <section className="panel">
-          <div className={styles.panelHead}>
-            <h2 className="panel-title">Le regioni con più pagamenti per abitante</h2>
-            <span className={styles.headNote}>Comuni con sede nella regione</span>
-          </div>
-          <div className="table-scroll" role="region" aria-label="Regioni ordinate per pagamenti pro capite" tabIndex={0}>
-            <table className="table">
-              <thead>
-                <tr>
-                  <th scope="col">Regione</th>
-                  <th scope="col" className="num">Per abitante</th>
-                  <th scope="col" className="num">Totale pagato</th>
-                </tr>
-              </thead>
-              <tbody>
-                {topRegions.map((region) => (
-                  <tr key={region.region}>
-                    <th scope="row">{region.region}</th>
-                    <td className="num">
-                      {region.perCapita === null ? "n.d." : exactEuro(region.perCapita)}
-                    </td>
-                    <td className="num">{compactEuroLike(region.value, topRegionScale)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-          <Link className="btn btn-block" href={`/territori?anno=${year}`}>
-            Vedi tutte le regioni
-          </Link>
-        </section>
-      </div>
+      <section className={`${styles.panel} ${styles.categoryPanel}`} data-composition-state="ready">
+        <div className={styles.panelHead}><div><h2>Pagamenti per titolo contabile</h2><small className={styles.panelContext}>SIOPE · {period}; include le partite di giro</small><small className={styles.panelContext}>Denominatore: totale dei pagamenti SIOPE dei Comuni nel periodo · Fonte: <a href={siope.source.siopeMovementsUrl} target="_blank" rel="noreferrer">RGS · SIOPE</a></small></div></div>
+        <div className={styles.donutLayout}>
+          <div className={styles.donut} style={{ "--donut": `conic-gradient(${donutGradient})` } as CSSProperties} aria-hidden="true"><span><strong>{compactEuro(siope.totalPaid)}</strong><small>Totale</small></span></div>
+          <ul aria-label="Composizione del totale dei pagamenti SIOPE">{buckets.map((bucket, index) => <li key={bucket.name}><i style={{ background: CHART_COLORS[index] }} aria-hidden="true" /><span>{bucket.name}</span><b>{percent((bucket.value / bucketTotal) * 100)}</b><small>{compactEuro(bucket.value)}</small></li>)}</ul>
+        </div>
+      </section>
 
-      <div className={styles.column}>
-        <section className="panel">
-          <div className={styles.panelHead}>
-            <h2 className="panel-title">Mese per mese</h2>
-            <span className={styles.headNote}>miliardi di €</span>
-          </div>
-          <ul className={styles.monthList}>
-            {siope.monthly.map((point) => {
-              const running = point.month === runningMonth;
-              return (
-                <li key={point.month}>
-                  <span>{point.label}</span>
-                  <i aria-hidden="true">
-                    <b
-                      className={running ? styles.running : undefined}
-                      style={{ width: maxFlow > 0 ? `${(point.flow / maxFlow) * 100}%` : "0%" }}
-                    />
-                  </i>
-                  <b className="num-tabular">{billions(point.flow)}</b>
-                </li>
-              );
-            })}
-          </ul>
-          {runningMonth === null ? (
-            <p className={styles.note}>Anno chiuso: tutti i mesi sono definitivi.</p>
-          ) : (
-            <p className={styles.note}>
-              {siope.latestMonthLabel} è ancora in corso: il numero salirà.
-            </p>
-          )}
-        </section>
+      <section className={`${styles.panel} ${styles.benchmarkPanel}`}>
+        <div className={styles.panelHead}><h2>Regioni per pagamenti pro capite</h2></div>
+        <div className={styles.metricSelect}>Spesa pro capite SIOPE</div>
+        <ul className={styles.benchmarkList}>{benchmarkRegions.map((region) => { const value = region.perCapita ?? 0; const below = siope.nationalPerCapita !== null && value < siope.nationalPerCapita; const regionCode = istatCodeOfRegion(region.region); return <li key={region.region}><RegionCrest className={styles.benchmarkCrest} regionCode={regionCode} regionName={region.region} decorative /><span>{region.region}</span><i><b data-below={below || undefined} style={{ width: `${Math.max(4, (value / regionMax) * 100)}%` }} /></i><strong>{exactEuro(value)}</strong></li>; })}</ul>
+        <Link className={styles.panelLink} href="/confronti">Vai al confronto completo <HugeiconsIcon icon={ArrowRight01Icon} size={12} /></Link>
+      </section>
 
-        <section className="panel">
-          <h2 className="panel-title">
-            I {topMunicipalities.length} Comuni con più pagamenti per abitante
-          </h2>
-          <ol className={styles.rankList}>
-            {topMunicipalities.map((municipality, index) => (
-              <li key={municipality.codiceFiscale}>
-                <span>{index + 1}</span>
-                <strong>
-                  {municipalityName(municipality.name)}
-                  <small>
-                    {municipality.population === null
-                      ? "popolazione non disponibile"
-                      : `${integer(municipality.population)} abitanti`}
-                  </small>
-                </strong>
-                <b>{exactEuro(municipality.perCapita ?? 0)}</b>
-              </li>
-            ))}
-          </ol>
-          <p className={styles.note}>
-            Confronto pro capite; il totale resta nel dettaglio territoriale.
-          </p>
-          <Link className="btn btn-block" href={`/territori?anno=${year}`}>
-            Vedi il confronto territoriale
-          </Link>
-        </section>
+      <HomeTrendPanel monthly={siope.monthly} period={period} year={year} />
 
-        <section className="panel">
-          <h2 className="panel-title">Da dove arrivano i numeri</h2>
-          <div className={styles.sourceList}>
-            <article>
-              <header>
-                <strong>SIOPE · pagamenti dei Comuni</strong>
-                <span className="status status-attiva">Attiva</span>
-              </header>
-              <dl>
-                <div>
-                  <dt>Dati fino a</dt>
-                  <dd>
-                    {monthLabel} {siope.year}
-                  </dd>
-                </div>
-                <div>
-                  <dt>File pubblicato il</dt>
-                  <dd>{longDate(siope.source.siopeMovementsLastModified)}</dd>
-                </div>
-                <div>
-                  <dt>Scaricato da noi</dt>
-                  <dd>{longDate(siope.source.observedAt)}</dd>
-                </div>
-              </dl>
-            </article>
-            <article>
-              <header>
-                <strong>IPA · registro degli enti</strong>
-                <span className="status status-attiva">Attiva</span>
-              </header>
-              <dl>
-                <div>
-                  <dt>Aggiornato il</dt>
-                  <dd>{longDate(siope.source.ipaLastModified)}</dd>
-                </div>
-              </dl>
-            </article>
-          </div>
-          <Link className="btn btn-block" href="/fonti">
-            Vedi tutte le fonti
-          </Link>
-        </section>
-
-        <section className="panel">
-          <h2 className="panel-title">Fondi e progetti · OpenCoesione</h2>
-          {cohesionForYear ? (
-            <>
-              <dl className={styles.factRows}>
-                <div>
-                  <dt>Impegni registrati entro il {year}</dt>
-                  <dd>{compactEuro(cohesionCommitted)}</dd>
-                </div>
-                <div>
-                  <dt>Pagamenti registrati entro il {year}</dt>
-                  <dd>{compactEuro(cohesionPaid)}</dd>
-                </div>
-              </dl>
-              <div className={styles.ratioHead}>
-                <span>Pagamenti sugli impegni</span>
-                <b>{percent(cohesionRatio)}</b>
-              </div>
-              <div className={styles.ratioTrack} aria-hidden="true">
-                <i style={{ width: `${Math.min(cohesionRatio, 100)}%` }} />
-              </div>
-              <p className={styles.note}>
-                Serie cumulata al {year}, nello snapshot aggiornato al {longDate(cohesion.referenceDate)}.
-                Un pagamento non prova che il progetto sia finito.
-              </p>
-            </>
-          ) : (
-            <p className={styles.note}>La serie OpenCoesione non contiene dati per il {year}.</p>
-          )}
-          <Link className="btn btn-block" href="/coesione">
-            Vai ai fondi
-          </Link>
-        </section>
-
-        <section className="panel">
-          <h2 className="panel-title">Segnali da controllare</h2>
-          {procurement ? (
-            <>
-              <dl className={styles.factRows}>
-                <div>
-                  <dt>Valore degli affidamenti diretti nel {procurement.year}</dt>
-                  <dd>{((procurement.totalValueBillion * procurement.byValue) / 100).toLocaleString("it-IT", {
-                    maximumFractionDigits: 1,
-                  })} mld €</dd>
-                </div>
-                <div>
-                  <dt>Quota sul valore dei contratti</dt>
-                  <dd>{percent(procurement.byValue)}</dd>
-                </div>
-              </dl>
-              <p className={styles.note}>
-                Relazione ANAC sul {procurement.year}. Segnale da approfondire con le fonti ufficiali.
-              </p>
-            </>
-          ) : (
-            <p className={styles.note}>
-              La relazione ANAC completa sul {year} arriverà quando sarà pubblicata.
-            </p>
-          )}
-          <Link className="btn btn-block" href="/controlli">
-            Vai ai controlli
-          </Link>
-        </section>
-
-        <section className="panel panel-accent">
-          <h2 className="panel-title">Come leggere questi numeri</h2>
-          <p className={styles.readingNote}>
-            Qui vedi i pagamenti dei Comuni. Una cifra alta va letta con abitanti e con i servizi
-            che quel Comune gestisce.
-          </p>
-          <Link href="/metodologia">Come leggiamo i dati →</Link>
-        </section>
-      </div>
+      <section className={`${styles.panel} ${styles.sourcesPanel}`}>
+        <div><h2>Da dove provengono i dati</h2><p>Le quattro fonti usate in questa panoramica; tutte le altre sono nel registro.</p></div>
+        <div className={styles.sourceMarks}>
+          {homeSources.map(({ slug, mark, label, source }) => <Link key={slug} href={`/fonti#${slug}`} title={`${source.name} · ${source.owner}`}><b>{mark}</b><span>{label.split("\n").map((line) => <span key={line}>{line}</span>)}</span></Link>)}
+          <Link href="/fonti"><b>+{sourceCounts.total - homeSources.length}</b><span>altre fonti<br/>registrate</span></Link>
+        </div>
+      </section>
+      <section className={`${styles.panel} ${styles.reportPanel}`}><HugeiconsIcon icon={Location01Icon} size={19} /><div><h2>Segnala un’anomalia</h2><p>Aiutaci a migliorare la trasparenza.</p></div><Link href="/supporto">Fai una segnalazione <HugeiconsIcon icon={ArrowRight01Icon} size={12} /></Link></section>
+      <section className={`${styles.panel} ${styles.commitmentPanel}`}><h2>Il nostro impegno</h2><ul><li><HugeiconsIcon icon={CheckmarkCircle02Icon} size={13} /> Dati pubblici e aperti</li><li><HugeiconsIcon icon={CheckmarkCircle02Icon} size={13} /> Nessun interesse politico</li><li><HugeiconsIcon icon={CheckmarkCircle02Icon} size={13} /> Fonti e limiti visibili</li><li><HugeiconsIcon icon={CheckmarkCircle02Icon} size={13} /> Tecnologia al servizio dei cittadini</li></ul></section>
     </main>
   );
 }

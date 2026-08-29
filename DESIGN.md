@@ -79,7 +79,7 @@ Regione selezionata: contorno `--color-text` da 2px. Regione senza dato: `--colo
 
 ## 03 Typography
 
-Un'unica famiglia: **Archivo**, caricata con `next/font/google` e self-hosted. `--font-heading-weight: 800` per titoli ed etichette, 400–600 per il testo.
+Un'unica famiglia: **Geist**, caricata con `next/font/google` e self-hosted. `--font-heading-weight: 800` per titoli ed etichette, 400–600 per il testo. `--font-mono` è riservato a codice, identificativi e valori tecnici; etichette, testo editoriale e titoli usano sempre i token Geist.
 
 ### Ramp
 
@@ -128,7 +128,7 @@ Header su una riga: marchio con firma tricolore, ricerca, azione. Sotto, la barr
 
 ### Dashboard
 
-La home è una griglia a tre colonne (`360px | 1fr | 300px`): lettura/composizione, geografia, dettaglio. A 1320px la colonna destra diventa una banda di moduli a piena larghezza; a 900px tutto segue lo stesso ordine DOM in colonna singola. La classifica dei Comuni non precede mai la mappa.
+La home usa due colonne principali (`360px | 1fr`): lettura/composizione e geografia. I moduli di supporto seguono in una banda simmetrica a due colonne, così nessuna colonna verticale lascia spazio morto sotto le altre. A 900px tutto segue lo stesso ordine DOM in colonna singola. La classifica dei Comuni non precede mai la mappa.
 
 ### Composizione della spesa
 
@@ -146,7 +146,7 @@ Use: fotografia additiva dello stesso totale, categorie mutuamente esclusive, co
 
 ### Stat strip
 
-`.stat-strip`: una banda bianca divisa in colonne, ognuna con etichetta maiuscola piccola, valore in Archivo 800 e nota esplicativa. Etichetta, valore e nota sono `display: block` e stanno su righe separate — accostati sulla stessa riga il numero si attacca all'etichetta e diventa illeggibile. Quattro colonne su desktop, due sotto i 900px, una sotto i 620px.
+`.stat-strip`: una banda bianca divisa in colonne, ognuna con etichetta maiuscola piccola, valore in Geist 800 e nota esplicativa. Etichetta, valore e nota sono `display: block` e stanno su righe separate — accostati sulla stessa riga il numero si attacca all'etichetta e diventa illeggibile. Quattro colonne su desktop, due sotto i 900px, una sotto i 620px.
 
 ### Bar rows
 

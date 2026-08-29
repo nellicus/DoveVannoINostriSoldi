@@ -1,4 +1,4 @@
-import { existsSync, readFileSync } from "node:fs";
+import { closeSync, openSync, readFileSync, readSync } from "node:fs";
 import { join } from "node:path";
 
 export type Relation = {
@@ -17,7 +17,10 @@ export type Relation = {
   amount?: number | null;
   ipa?: string | null;
   source_url?: string | null;
-  note_source?: string | null;
+  references: {
+    cig: string[];
+    cup: string[];
+  };
   suspect_duplicate?: boolean;
 };
 
@@ -60,13 +63,37 @@ const META_PATH = join(
   process.cwd(),
   "src/data/generated/investigative-explorer-incarichi.meta.json",
 );
+const MAX_ARTIFACT_BYTES = 50 * 1024 * 1024;
 
 let cache: InvestigativeExplorerArtifact | null = null;
 
+function readArtifactBounded(path: string, maxBytes: number): string {
+  const descriptor = openSync(path, "r");
+  const buffer = Buffer.allocUnsafe(maxBytes + 1);
+  let bytesRead = 0;
+
+  try {
+    while (bytesRead < buffer.length) {
+      const count = readSync(descriptor, buffer, bytesRead, buffer.length - bytesRead, null);
+      if (count === 0) break;
+      bytesRead += count;
+    }
+  } finally {
+    closeSync(descriptor);
+  }
+
+  if (bytesRead > maxBytes) {
+    throw new Error("artifact esploratore oltre il limite consentito");
+  }
+  return buffer.toString("utf8", 0, bytesRead);
+}
+
 export function loadInvestigativeExplorer(): InvestigativeExplorerArtifact {
   if (cache) return cache;
-  const data = JSON.parse(readFileSync(ARTIFACT_PATH, "utf8")) as InvestigativeExplorerArtifact;
-  if (data.schemaVersion !== 1) throw new Error("schema artifact non supportato");
+  const data = JSON.parse(readArtifactBounded(ARTIFACT_PATH, MAX_ARTIFACT_BYTES)) as InvestigativeExplorerArtifact;
+  if (data.schemaVersion !== 1 || data.transformVersion !== 3) {
+    throw new Error("schema artifact non supportato");
+  }
   cache = data;
   return data;
 }
@@ -74,7 +101,6 @@ export function loadInvestigativeExplorer(): InvestigativeExplorerArtifact {
 const EMPTY_META: InvestigativeMeta = { relationCount: 0, caveat: "" };
 
 export function loadInvestigativeMeta(): InvestigativeMeta {
-  if (!existsSync(META_PATH)) return EMPTY_META;
   try {
     return JSON.parse(readFileSync(META_PATH, "utf8")) as InvestigativeMeta;
   } catch {
@@ -92,7 +118,6 @@ const INDEXED_FIELDS: (keyof Relation)[] = [
   "object_key",
   "role",
   "source_record_id",
-  "note_source",
   "ipa",
 ];
 
@@ -116,6 +141,9 @@ export function buildSearchIndex(relations: Relation[]): SearchIndex {
         for (const t of tokenize(v)) tokens.add(t);
       }
     }
+    for (const code of [...(rel.references?.cig ?? []), ...(rel.references?.cup ?? [])]) {
+      for (const token of tokenize(code)) tokens.add(token);
+    }
     for (const t of tokens) {
       const arr = tokenToIds.get(t);
       if (arr) arr.push(i);
@@ -129,6 +157,7 @@ export function searchExplorer(index: SearchIndex, query: string, limit = 100): 
   const q = query.trim().toUpperCase();
   if (!q) return [];
   const tokens = tokenize(q);
+  if (tokens.length > 1 && (tokens[0] === "CIG" || tokens[0] === "CUP")) tokens.shift();
   if (tokens.length === 0) return [];
   let candidates: number[] | null = null;
   for (const t of tokens) {

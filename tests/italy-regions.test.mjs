@@ -1,7 +1,16 @@
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
-import { italyRegionGeometry } from "../src/data/generated/italy-regions.ts";
+import {
+  ITALY_PROVINCES_PROJECTION,
+  ITALY_PROVINCES_VIEWBOX,
+  italyProvinceGeometry,
+} from "../src/data/generated/italy-provinces.ts";
+import {
+  ITALY_REGIONS_PROJECTION,
+  ITALY_REGIONS_VIEWBOX,
+  italyRegionGeometry,
+} from "../src/data/generated/italy-regions.ts";
 import {
   ISTAT_CODE_BY_REGION_NAME,
   ITALY_MACRO_AREAS,
@@ -13,11 +22,26 @@ import {
 } from "../src/lib/italy-regions.ts";
 
 const snapshotUrl = new URL("../src/data/generated/siope-municipal.json", import.meta.url);
+const sourceSpecUrl = new URL(
+  "../scripts/maps/specs/istat-administrative-boundaries.source.json",
+  import.meta.url,
+);
+const generatedRegistryUrl = new URL("../scripts/ci/generated-artifacts.json", import.meta.url);
+const regionGeometrySourceUrl = new URL("../src/data/generated/italy-regions.ts", import.meta.url);
+const provinceGeometrySourceUrl = new URL("../src/data/generated/italy-provinces.ts", import.meta.url);
 const annualSnapshotUrls = [
   new URL("../src/data/generated/siope-municipal-2024.json", import.meta.url),
   new URL("../src/data/generated/siope-municipal-2025.json", import.meta.url),
   snapshotUrl,
 ];
+
+function coordinates(path) {
+  const values = [...path.matchAll(/-?\d+(?:\.\d+)?/g)].map((match) => Number(match[0]));
+  return Array.from({ length: values.length / 2 }, (_, index) => [
+    values[index * 2],
+    values[index * 2 + 1],
+  ]);
+}
 
 test("ISTAT geometry and SIOPE data cover the same 20 regions", async () => {
   const snapshot = JSON.parse(await readFile(snapshotUrl, "utf8"));
@@ -35,6 +59,63 @@ test("ISTAT geometry and SIOPE data cover the same 20 regions", async () => {
     ),
   );
   assert.ok(italyRegionGeometry.every((region) => region.path.startsWith("M") && region.path.endsWith("Z")));
+});
+
+test("ISTAT province geometry is complete, unique and mapped to known regions", () => {
+  assert.equal(italyProvinceGeometry.length, 110);
+  assert.equal(new Set(italyProvinceGeometry.map((province) => province.code)).size, 110);
+  assert.equal(new Set(italyProvinceGeometry.map((province) => province.name)).size, 110);
+  assert.ok(
+    italyProvinceGeometry.every((province) => REGION_NAME_BY_ISTAT_CODE[province.regionCode]),
+  );
+  assert.ok(
+    italyProvinceGeometry.every(
+      (province) => province.path.startsWith("M") && province.path.endsWith("Z"),
+    ),
+  );
+});
+
+test("ISTAT region and province layers use the same national projection", () => {
+  assert.equal(ITALY_REGIONS_PROJECTION.id, "istat-2026-regional-envelope-560x640-p12-v1");
+  assert.equal(ITALY_REGIONS_PROJECTION.basis, "regional-envelope");
+  assert.equal(ITALY_REGIONS_VIEWBOX, "0 0 560 640");
+  assert.equal(ITALY_PROVINCES_VIEWBOX, ITALY_REGIONS_VIEWBOX);
+  assert.deepEqual(ITALY_PROVINCES_PROJECTION, ITALY_REGIONS_PROJECTION);
+});
+
+test("ISTAT administrative geometry keeps its source lock enforceable offline", async () => {
+  const [sourceSpec, registry, regionSource, provinceSource] = await Promise.all([
+    readFile(sourceSpecUrl, "utf8").then(JSON.parse),
+    readFile(generatedRegistryUrl, "utf8").then(JSON.parse),
+    readFile(regionGeometrySourceUrl, "utf8"),
+    readFile(provinceGeometrySourceUrl, "utf8"),
+  ]);
+  const artifact = registry.artifacts.find((entry) => entry.id === "istat-administrative-boundaries");
+
+  assert.equal(sourceSpec.resource.url, "https://www.istat.it/storage/cartografia/confini_amministrativi/generalizzati/2026/Limiti01012026_g.zip");
+  assert.equal(sourceSpec.resource.sha256, "b011a590656c3a3ebc297fba80726a376aa843b6f164641cf6a4a990021a81d6");
+  assert.equal(sourceSpec.resource.bytes, 10_450_609);
+  assert.equal(sourceSpec.license.id, "CC-BY-4.0");
+  assert.equal(sourceSpec.projection.id, ITALY_REGIONS_PROJECTION.id);
+  assert.equal(sourceSpec.layers.regions.expectedFeatures, italyRegionGeometry.length);
+  assert.equal(sourceSpec.layers.provinces.expectedFeatures, italyProvinceGeometry.length);
+  assert.equal(artifact?.sourceSpec, "scripts/maps/specs/istat-administrative-boundaries.source.json");
+
+  for (const generatedSource of [regionSource, provinceSource]) {
+    assert.match(generatedSource, new RegExp(`Source: ${sourceSpec.resource.url.replaceAll(".", "\\.")}`));
+    assert.match(generatedSource, new RegExp(`Source SHA-256: ${sourceSpec.resource.sha256}`));
+    assert.match(generatedSource, new RegExp(`Source bytes: ${sourceSpec.resource.bytes}`));
+  }
+});
+
+test("every generated region and province point stays inside the shared viewBox", () => {
+  const [, , width, height] = ITALY_REGIONS_VIEWBOX.split(" ").map(Number);
+  for (const geometry of [...italyRegionGeometry, ...italyProvinceGeometry]) {
+    for (const [x, y] of coordinates(geometry.path)) {
+      assert.ok(x >= 0 && x <= width, `${geometry.name}: x=${x} outside ${width}`);
+      assert.ok(y >= 0 && y <= height, `${geometry.name}: y=${y} outside ${height}`);
+    }
+  }
 });
 
 test("every region resolves to exactly one macro area, with no silent drops", () => {

@@ -38,6 +38,7 @@ function SectionNavContent({
   return (
     <nav
       className={`shell ${styles.sectionNav}`}
+      data-section-nav="true"
       aria-label={`Altre pagine in ${section!.label}`}
     >
       <p className={styles.title}>

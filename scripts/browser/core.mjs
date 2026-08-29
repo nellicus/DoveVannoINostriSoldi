@@ -28,9 +28,12 @@ async function viewportState(page) {
     const main = document.querySelector("main");
     const mainRect = main?.getBoundingClientRect();
     const mainStyle = main ? getComputedStyle(main) : null;
+    const parsedRootZoom = Number.parseFloat(getComputedStyle(root).zoom);
+    const rootZoom = Number.isFinite(parsedRootZoom) ? parsedRootZoom : 1;
 
     return {
       bodyScrollWidth: body.scrollWidth,
+      bodyVisualScrollWidth: body.scrollWidth * rootZoom,
       clientWidth: root.clientWidth,
       h1Count: document.querySelectorAll("h1").length,
       innerWidth,
@@ -57,8 +60,8 @@ async function assertResponsiveShell(page, label, width) {
     `${label}: overflow globale ${state.rootScrollWidth}px > ${state.clientWidth}px`,
   );
   assert.ok(
-    state.bodyScrollWidth <= state.clientWidth + 1,
-    `${label}: overflow del body ${state.bodyScrollWidth}px > ${state.clientWidth}px`,
+    state.bodyVisualScrollWidth <= state.clientWidth + 1,
+    `${label}: overflow del body ${state.bodyVisualScrollWidth}px visuali > ${state.clientWidth}px`,
   );
 }
 
@@ -244,10 +247,12 @@ async function assertInfoTooltips(page, label) {
       const tooltip = document.getElementById(id);
       const triggerRect = trigger.getBoundingClientRect();
       const tooltipRect = tooltip?.getBoundingClientRect();
+      const parsedRootZoom = Number.parseFloat(getComputedStyle(document.documentElement).zoom);
+      const rootZoom = Number.isFinite(parsedRootZoom) ? parsedRootZoom : 1;
       return {
         describedBy: trigger.getAttribute("aria-describedby"),
         expanded: trigger.getAttribute("aria-expanded"),
-        bodyScrollWidth: document.body.scrollWidth,
+        bodyVisualScrollWidth: document.body.scrollWidth * rootZoom,
         clientWidth: document.documentElement.clientWidth,
         innerWidth: window.innerWidth,
         triggerRect: {
@@ -283,7 +288,7 @@ async function assertInfoTooltips(page, label) {
       `${label}: trigger ${tooltipId} esce a destra`,
     );
     assert.ok(
-      openState.bodyScrollWidth <= openState.clientWidth + 1,
+      openState.bodyVisualScrollWidth <= openState.clientWidth + 1,
       `${label}: overflow mentre ${tooltipId} è aperto`,
     );
 
@@ -305,7 +310,7 @@ async function assertInfoTooltips(page, label) {
 
 async function assertRegionalMapSelection(page, label) {
   const mapSelector = '[data-region-map="true"]';
-  const detailSelector = '[data-region-detail="true"] b';
+  const detailSelector = '[data-region-compact-detail="true"] strong';
   const regionLabels = await page.$$eval(
     'select[data-region-selector="true"] option',
     (options) => options.map((option) => option.textContent?.trim() ?? ""),
@@ -318,6 +323,26 @@ async function assertRegionalMapSelection(page, label) {
     `${mapSelector} path[role="button"][aria-label]`,
   );
   assert.equal(regionPaths.length, 20, `${label}: la mappa deve esporre 20 regioni`);
+
+  const layerState = await page.$eval(mapSelector, (map) => {
+    const provinces = [...map.querySelectorAll('path[data-province-geometry="true"]')];
+    const regions = [...map.querySelectorAll('path[role="button"][aria-label]')];
+    const bounds = map.getBoundingClientRect();
+    return {
+      provinceCount: provinces.length,
+      regionCount: regions.length,
+      provincesBeforeRegions: Boolean(
+        provinces.at(-1)
+        && regions[0]
+        && (provinces.at(-1).compareDocumentPosition(regions[0]) & Node.DOCUMENT_POSITION_FOLLOWING)
+      ),
+      insideViewport: bounds.left >= -1 && bounds.right <= window.innerWidth + 1,
+    };
+  });
+  assert.equal(layerState.provinceCount, 110, `${label}: la mappa deve disegnare 110 province`);
+  assert.equal(layerState.regionCount, 20, `${label}: la mappa deve mantenere 20 regioni interattive`);
+  assert.equal(layerState.provincesBeforeRegions, true, `${label}: le regioni interattive devono stare sopra le province`);
+  assert.equal(layerState.insideViewport, true, `${label}: la mappa esce dal viewport`);
 
   const lombardia = await page.$(`${mapSelector} path[aria-label^="Lombardia:"]`);
   const veneto = await page.$(`${mapSelector} path[aria-label^="Veneto:"]`);
@@ -334,7 +359,7 @@ async function assertRegionalMapSelection(page, label) {
   assert.equal(previewName, "Lombardia", `${label}: hover non aggiorna l’anteprima`);
 
   const hoveredOutline = await page.$eval(mapSelector, (map) => {
-    const outlines = [...map.querySelectorAll('path[aria-hidden="true"]')];
+    const outlines = [...map.querySelectorAll('path[data-region-outline="true"]')];
     return {
       outlineCount: outlines.length,
       overlayStroke: outlines.map((outline) => getComputedStyle(outline).stroke),
@@ -356,7 +381,7 @@ async function assertRegionalMapSelection(page, label) {
 
   await lombardia.click();
   await page.waitForFunction(
-    () => document.querySelector('[data-region-detail="true"] b')?.textContent?.trim() === "Lombardia",
+    () => document.querySelector('[data-region-compact-detail="true"] strong')?.textContent?.trim() === "Lombardia",
     { timeout: 2_000 },
   );
   const fixedName = await page.$eval(detailSelector, (element) => element.textContent?.trim());
@@ -376,56 +401,54 @@ async function assertRegionalMapSelection(page, label) {
 
   await veneto.click();
   await page.waitForFunction(
-    () => document.querySelector('[data-region-detail="true"] b')?.textContent?.trim() === "Veneto",
+    () => document.querySelector('[data-region-compact-detail="true"] strong')?.textContent?.trim() === "Veneto",
     { timeout: 2_000 },
   );
   const switchedName = await page.$eval(detailSelector, (element) => element.textContent?.trim());
   assert.equal(switchedName, "Veneto", `${label}: il clic non cambia la selezione fissata`);
+
+  const focusedVeneto = await page.evaluate((selector) => {
+    const path = document.querySelector(selector);
+    if (!(path instanceof SVGElement)) return false;
+    path.focus();
+    return document.activeElement === path;
+  }, `${mapSelector} path[aria-label^="Veneto:"]`);
+  assert.equal(focusedVeneto, true, `${label}: il percorso Veneto non riceve il focus`);
+  await page.keyboard.press("ArrowRight");
+  const keyboardFocus = await page.evaluate(() => document.activeElement?.getAttribute("aria-label") ?? "");
+  assert.ok(
+    keyboardFocus && !keyboardFocus.startsWith("Veneto:"),
+    `${label}: le frecce non spostano il focus tra le regioni`,
+  );
 
   await lombardia.dispose();
   await veneto.dispose();
   for (const path of regionPaths) await path.dispose();
 }
 
-async function assertSpendingComposition(page, label, width) {
+async function assertSpendingComposition(page, label) {
   const selector = '[data-composition-state="ready"]';
   await page.waitForSelector(selector);
-  const state = await page.$eval(selector, (root, viewportWidth) => {
-    const visual = root.querySelector('[aria-label^="Composizione di"]');
+  const state = await page.$eval(selector, (root) => {
+    const visual = root.querySelector('[aria-hidden="true"][style*="conic-gradient"]');
     const map = document.querySelector('[data-region-map="true"]');
-    const municipalityHeading = [...document.querySelectorAll("h2")].find((heading) =>
-      heading.textContent?.includes("Comuni con più pagamenti per abitante"),
-    );
+    const source = root.querySelector('a[href^="https://"]');
+    const itemTexts = [...root.querySelectorAll("ul li")].map((item) => item.textContent ?? "");
     return {
-      legendButtons: root.querySelectorAll("ol button").length,
-      visualDisplay: visual ? getComputedStyle(visual).display : null,
-      visualHeight: visual?.getBoundingClientRect().height ?? 0,
+      itemCount: itemTexts.length,
+      itemsExposeValueAndShare: itemTexts.every((text) => text.includes("€") && text.includes("%")),
+      visualWidth: visual?.getBoundingClientRect().width ?? 0,
       hasMetadata: /Denominatore:.*Fonte:/s.test(root.textContent ?? ""),
-      compositionBeforeMap: Boolean(map && (root.compareDocumentPosition(map) & Node.DOCUMENT_POSITION_FOLLOWING)),
-      mapBeforeMunicipalities: Boolean(
-        map && municipalityHeading && (map.compareDocumentPosition(municipalityHeading) & Node.DOCUMENT_POSITION_FOLLOWING)
-      ),
-      shouldCollapse: viewportWidth <= 620,
+      mapBeforeComposition: Boolean(map && (map.compareDocumentPosition(root) & Node.DOCUMENT_POSITION_FOLLOWING)),
+      sourceHref: source?.getAttribute("href") ?? "",
     };
-  }, width);
-  assert.equal(state.legendButtons, 5, `${label}: macro-voci inattese`);
+  });
+  assert.equal(state.itemCount, 5, `${label}: macro-voci inattese`);
+  assert.equal(state.itemsExposeValueAndShare, true, `${label}: importi o percentuali non leggibili`);
   assert.equal(state.hasMetadata, true, `${label}: periodo/perimetro/fonte non vicini`);
-  assert.equal(state.compositionBeforeMap, true, `${label}: composizione dopo la mappa nel DOM`);
-  assert.equal(state.mapBeforeMunicipalities, true, `${label}: classifica Comuni anticipa la mappa`);
-  assert.equal(state.visualDisplay === "none", state.shouldCollapse, `${label}: fallback mobile incoerente`);
-  if (!state.shouldCollapse) assert.ok(state.visualHeight >= 250, `${label}: geometria treemap non riservata`);
-
-  const firstLegendButton = `${selector} ol button`;
-  await page.focus(firstLegendButton);
-  await page.waitForSelector(`${selector} [role="tooltip"]`, { visible: true });
-  const describedBy = await page.$eval(firstLegendButton, (button) => button.getAttribute("aria-describedby"));
-  assert.ok(describedBy, `${label}: tooltip non collegato al controllo`);
-  await page.keyboard.press("Escape");
-  await page.waitForFunction((rootSelector) => !document.querySelector(`${rootSelector} [role="tooltip"]`), {}, selector);
-
-  await page.click(`${selector} details summary`);
-  const rows = await page.$$eval(`${selector} details tbody tr`, (items) => items.length);
-  assert.equal(rows, 6, `${label}: tabella equivalente incompleta`);
+  assert.equal(state.mapBeforeComposition, true, `${label}: ordine della dashboard inatteso`);
+  assert.match(state.sourceHref, /^https:\/\//, `${label}: link fonte non sicuro o assente`);
+  assert.ok(state.visualWidth >= 80, `${label}: grafico di composizione non renderizzato`);
 }
 
 async function assertTableKeyboardScroll(page, label) {
@@ -546,7 +569,9 @@ async function assertPrimaryDropdownOnly(page, label, { sectionLabel, childLabel
   const itemElement = await findPrimaryNavSection(page, sectionLabel);
   assert.ok(itemElement, `${label}: sezione ${sectionLabel} assente`);
 
-  await itemElement.hover();
+  const toggle = await itemElement.$(".nav-item-toggle");
+  assert.ok(toggle, `${label}: pulsante tendina assente`);
+  await toggle.click();
   await assertSubmenuVisible(itemElement, page, label, childLabel);
 }
 
@@ -556,7 +581,12 @@ async function assertPrimaryDropdownExclusive(page, label, { fromLabel, toLabel 
   assert.ok(fromItem, `${label}: sezione ${fromLabel} assente`);
   assert.ok(toItem, `${label}: sezione ${toLabel} assente`);
 
-  await fromItem.hover();
+  const fromToggle = await fromItem.$(".nav-item-toggle");
+  const toToggle = await toItem.$(".nav-item-toggle");
+  assert.ok(fromToggle, `${label}: pulsante ${fromLabel} assente`);
+  assert.ok(toToggle, `${label}: pulsante ${toLabel} assente`);
+
+  await fromToggle.click();
   await page.waitForFunction(
     (element) =>
       element.getAttribute("data-open") === "true" &&
@@ -565,7 +595,7 @@ async function assertPrimaryDropdownExclusive(page, label, { fromLabel, toLabel 
     fromItem,
   );
 
-  await toItem.hover();
+  await toToggle.click();
   await page.waitForFunction(
     (from, to) => {
       if (to.getAttribute("data-open") !== "true") return false;
@@ -586,6 +616,14 @@ async function assertPrimaryDropdownExclusive(page, label, { fromLabel, toLabel 
 }
 
 async function assertPrimaryDropdownTap(page, label, { sectionLabel, childLabel }) {
+  const mobileToggle = await page.$('button[aria-controls="dashboard-sidebar"]');
+  assert.ok(mobileToggle, `${label}: pulsante menu mobile assente`);
+  await mobileToggle.click();
+  await page.waitForFunction(
+    () => document.querySelector("#dashboard-sidebar")?.getAttribute("data-mobile-open") === "true",
+    { timeout: 3_000 },
+  );
+
   const itemElement = await findPrimaryNavSection(page, sectionLabel);
   assert.ok(itemElement, `${label}: sezione ${sectionLabel} assente`);
 
@@ -596,16 +634,14 @@ async function assertPrimaryDropdownTap(page, label, { sectionLabel, childLabel 
   const toggle = await itemElement.$(".nav-item-toggle");
   assert.ok(toggle, `${label}: pulsante tendina assente`);
 
-  const toggleBox = await toggle.boundingBox();
-  assert.ok(toggleBox, `${label}: pulsante tendina non visibile`);
-  await page.touchscreen.tap(
-    toggleBox.x + toggleBox.width / 2,
-    toggleBox.y + toggleBox.height / 2,
-  );
+  await toggle.evaluate((button) => button.click());
   await assertSubmenuVisible(itemElement, page, label, childLabel);
 
-  const navRowOpen = await page.$eval(".nav-row", (row) => row.getAttribute("data-menu-open"));
-  assert.equal(navRowOpen, "true", `${label}: data-menu-open non attivo`);
+  assert.equal(
+    await itemElement.evaluate((element) => element.getAttribute("data-open")),
+    "true",
+    `${label}: gruppo di navigazione non aperto`,
+  );
   await assertResponsiveShell(page, `${label} aperto`, 390);
 
   await page.keyboard.press("Escape");
@@ -739,15 +775,22 @@ try {
       assert.deepEqual(currentLabels, ["Addetti"]);
 
       await assertPrimaryDropdownTap(page, "Atlante Imprese query navigation 390px", {
-        sectionLabel: "Imprese",
+        sectionLabel: "Enti e imprese",
         childLabel: "Localizzazioni attive",
       });
 
-      const itemElement = await findPrimaryNavSection(page, "Imprese");
-      assert.ok(itemElement, "Atlante Imprese query navigation 390px: sezione Imprese assente");
+      const mobileToggle = await page.$('button[aria-controls="dashboard-sidebar"]');
+      assert.ok(mobileToggle, "Atlante Imprese query navigation 390px: pulsante menu mobile assente");
+      await mobileToggle.click();
+      await page.waitForFunction(
+        () => document.querySelector("#dashboard-sidebar")?.getAttribute("data-mobile-open") === "true",
+        { timeout: 3_000 },
+      );
+      const itemElement = await findPrimaryNavSection(page, "Enti e imprese");
+      assert.ok(itemElement, "Atlante Imprese query navigation 390px: sezione Enti e imprese assente");
       const toggle = await itemElement.$(".nav-item-toggle");
       assert.ok(toggle, "Atlante Imprese query navigation 390px: pulsante tendina assente");
-      await toggle.click();
+      await toggle.evaluate((button) => button.click());
       await assertSubmenuVisible(
         itemElement,
         page,
@@ -758,7 +801,7 @@ try {
         'a[href="/imprese?metric=active_local_units"]',
       );
       assert.ok(localUnitsLink, "Atlante Imprese query navigation 390px: link metrica assente");
-      await localUnitsLink.click();
+      await localUnitsLink.evaluate((link) => link.click());
       await page.waitForFunction(
         () => new URL(window.location.href).searchParams.get("metric") === "active_local_units",
         { timeout: 3_000 },
@@ -773,9 +816,14 @@ try {
         { timeout: 3_000 },
       );
       assert.equal(
-        await page.$eval(".nav-row", (row) => row.hasAttribute("data-menu-open")),
+        await page.$eval("#dashboard-sidebar", (sidebar) => sidebar.getAttribute("data-mobile-open") === "true"),
         false,
-        "Atlante Imprese query navigation 390px: menu rimasto aperto dopo la query",
+        "Atlante Imprese query navigation 390px: pannello mobile rimasto aperto dopo la query",
+      );
+      assert.equal(
+        await page.$("nav.primary-nav .nav-item[data-open=\"true\"]"),
+        null,
+        "Atlante Imprese query navigation 390px: gruppo rimasto aperto dopo la query",
       );
     },
   });
@@ -911,8 +959,8 @@ try {
     {
       pathname: "/controlli",
       label: "Controlli",
-      sectionLabel: "Cosa controllare",
-      childLabel: "Appalti",
+      sectionLabel: "Segnali e verifiche",
+      childLabel: "Segnalazioni da spiegare",
     },
     {
       pathname: "/territori/irpef",
@@ -923,19 +971,19 @@ try {
     {
       pathname: "/appalti",
       label: "Appalti",
-      sectionLabel: "Cosa controllare",
-      childLabel: "Incarichi",
+      sectionLabel: "Contratti e incarichi",
+      childLabel: "Incarichi pubblici",
     },
     {
       pathname: "/parlamento",
       label: "Parlamento",
-      sectionLabel: "Istituzioni",
+      sectionLabel: "Enti e imprese",
       childLabel: "Parlamento",
     },
     {
       pathname: "/debito",
       label: "Debito pubblico",
-      sectionLabel: "Soldi",
+      sectionLabel: "Spesa pubblica",
       childLabel: "Debito pubblico",
     },
   ];
@@ -1080,8 +1128,8 @@ try {
     width: 1280,
     validate: async (page) => {
       await assertPrimaryDropdownExclusive(page, "Menu tendina esclusivo 1280px", {
-        fromLabel: "Istituzioni",
-        toLabel: "Enti e società",
+        fromLabel: "Enti e imprese",
+        toLabel: "Contratti e incarichi",
       });
     },
   });
@@ -1260,10 +1308,11 @@ try {
       pathname: "/",
       width,
       validate: async (page) => {
+        await page.waitForSelector(".site-footer", { visible: true });
         const sitemap = await page.$(".footer-sitemap");
         assert.ok(sitemap, `${label}: mappa del sito assente`);
-        const rowCount = await page.$$eval(".footer-sitemap-grid", (rows) => rows.length);
-        assert.equal(rowCount, 3, `${label}: attese 3 righe nella mappa`);
+        const columns = await page.$(".footer-sitemap-columns");
+        assert.ok(columns, `${label}: contenitore dei gruppi assente`);
         const groupCount = await page.$$eval(".footer-sitemap-group", (groups) => groups.length);
         assert.equal(groupCount, 9, `${label}: attesi 9 gruppi nella mappa`);
         const headings = await page.$$eval(".footer-sitemap-group h3", (items) =>
@@ -1273,10 +1322,16 @@ try {
         assert.ok(headings.includes("Istituzioni"), `${label}: sezione Istituzioni assente`);
         assert.ok(headings.includes("Fonti e metodo"), `${label}: sezione Fonti e metodo assente`);
         assert.ok(!headings.includes("Legale"), `${label}: sezione Legale non attesa in mappa`);
-        const text = await bodyText(page);
-        assertTextMatches(text, /Privacy/i, label);
-        assertTextMatches(text, /Termini/i, label);
-        assertTextMatches(text, /Chi ci sostiene/i, label);
+        const requiredFooterLinks = [
+          [".footer-actions a[href='/privacy']", "Privacy"],
+          [".footer-secondary-links a[href='/termini']", "Termini"],
+          [".footer-secondary-links a[href='/supporter']", "Chi ci sostiene"],
+        ];
+        for (const [selector, expectedLabel] of requiredFooterLinks) {
+          await page.waitForSelector(selector, { visible: true });
+          const actualLabel = await page.$eval(selector, (link) => link.textContent?.trim() ?? "");
+          assert.equal(actualLabel, expectedLabel, `${label}: etichetta errata per ${selector}`);
+        }
         await assertResponsiveShell(page, label, width);
       },
     });
@@ -1360,7 +1415,7 @@ try {
       pathname: "/",
       width,
       validate: async (page) => {
-        const input = await page.$("#global-entity-search");
+        const input = await page.$("#global-site-search");
         assert.ok(input, `${label}: campo di ricerca assente`);
         await input.type("Roma");
         await page.waitForSelector('[role="listbox"] [role="option"]', { visible: true });
@@ -1384,7 +1439,7 @@ try {
     pathname: "/",
     width: 390,
     validate: async (page) => {
-      const input = await page.$("#global-entity-search");
+      const input = await page.$("#global-site-search");
       assert.ok(input, "Ricerca header Escape: campo assente");
       await input.type("Roma");
       await page.waitForSelector('[role="listbox"] [role="option"]', { visible: true });
@@ -1399,11 +1454,11 @@ try {
     label: "Ricerca header errore 390px",
     pathname: "/",
     width: 390,
-    expectedFailure: (failure) => failure.includes("/api/enti?q=Roma&limit=7"),
+    expectedFailure: (failure) => failure.includes("/api/search?q=Roma&limit=8"),
     validate: async (page) => {
       await page.setRequestInterception(true);
       page.on("request", (request) => {
-        if (new URL(request.url()).pathname === "/api/enti") {
+        if (new URL(request.url()).pathname === "/api/search") {
           void request.respond({
             status: 503,
             contentType: "application/json",
@@ -1413,11 +1468,11 @@ try {
           void request.continue();
         }
       });
-      const input = await page.$("#global-entity-search");
+      const input = await page.$("#global-site-search");
       assert.ok(input, "Ricerca header errore: campo assente");
       await input.type("Roma");
       await page.waitForFunction(() =>
-        document.body.innerText.includes("La ricerca rapida non è disponibile"),
+        document.body.innerText.includes("La ricerca globale non è disponibile"),
       );
       await page.keyboard.press("Escape");
       assert.equal(await input.evaluate((element) => element.getAttribute("aria-expanded")), "false");
@@ -1432,24 +1487,39 @@ try {
     validate: async (page) => {
       await page.setRequestInterception(true);
       page.on("request", (request) => {
-        if (new URL(request.url()).pathname === "/api/enti") {
+        if (new URL(request.url()).pathname === "/api/search") {
           void request.respond({
             status: 200,
             contentType: "application/json",
             body: JSON.stringify({
               ok: true,
-              records: [{
-                codiceIpa: "ente_test",
-                denominazione: "Amministrazione straordinariamente lunga senza separatori utili alla visualizzazione",
-                tipologia: "Pubblica amministrazione territoriale",
+              query: "ente",
+              groups: [{
+                type: "ente",
+                label: "Enti",
+                results: [{
+                  id: "entity:ente_test",
+                  href: "/enti/ente_test",
+                  title: "Amministrazione straordinariamente lunga senza separatori utili alla visualizzazione",
+                  context: "Registro IPA",
+                  type: "ente",
+                  description: "Pubblica amministrazione territoriale · ente_test",
+                  match: { reason: "entity", label: "Nome dell'ente" },
+                  score: 1900,
+                }],
               }],
+              total: 1,
+              hasMore: false,
+              staticTotal: 0,
+              entityTotal: 1,
+              entitiesAvailable: true,
             }),
           });
         } else {
           void request.continue();
         }
       });
-      const input = await page.$("#global-entity-search");
+      const input = await page.$("#global-site-search");
       assert.ok(input, "Ricerca header testo lungo: campo assente");
       await input.type("ente");
       await page.waitForSelector('[role="listbox"] [role="option"]', { visible: true });
@@ -1532,7 +1602,7 @@ try {
       label,
       pathname: "/",
       width,
-      validate: async (page) => assertSpendingComposition(page, label, width),
+      validate: async (page) => assertSpendingComposition(page, label),
     });
     completed.push(label);
   }

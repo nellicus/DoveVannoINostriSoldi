@@ -24,15 +24,32 @@ test("narrow responsive grids cannot exceed their container", async () => {
   }
 });
 
-test("the home has one semantic title without adding a visual hero", async () => {
+test("the home has one semantic dashboard title and a bounded KPI header", async () => {
   const [page, css] = await Promise.all([
     source("../src/app/page.tsx"),
     source("../src/app/home.module.css"),
   ]);
 
   assert.equal(page.match(/<h1\b/g)?.length, 1);
-  assert.match(page, /<h1 className=\{styles\.pageTitle\}>Dove vanno i nostri soldi pubblici<\/h1>/);
-  assert.match(css, /\.pageTitle \{[\s\S]*?clip-path: inset\(50%\);/);
+  assert.match(page, /<h1>Panoramica Italia<\/h1>/);
+  assert.match(page, /className=\{styles\.summaryGrid\} aria-label="Indicatori principali"/);
+  assert.match(css, /\.summaryGrid \{[\s\S]*?grid-template-columns:\s*repeat\(6,\s*minmax\(0,\s*1fr\)\);/);
+});
+
+test("the home supporting rail forms a balanced grid without empty auto-fit cells", async () => {
+  const [page, css] = await Promise.all([
+    source("../src/app/page.tsx"),
+    source("../src/app/home.module.css"),
+  ]);
+
+  assert.match(css, /\.sourcesPanel \{[\s\S]*?grid-column:span 6/);
+  assert.match(css, /\.reportPanel \{[\s\S]*?grid-column:span 3/);
+  assert.match(css, /\.commitmentPanel \{[\s\S]*?grid-column:span 3/);
+  assert.doesNotMatch(css, /repeat\(auto-fit, minmax\(280px, 1fr\)\)/);
+  assert.match(css, /\.anomalyRow \{[\s\S]*?border-top:\s*1px solid/);
+  assert.match(css, /\.anomalyRow:hover\{background:/);
+  assert.match(page, /className=\{styles\.anomalyMarker\}/);
+  assert.doesNotMatch(page, /ContractsIcon|ShieldCheck|CalendarClockIcon/);
 });
 
 test("information tooltips expose and dismiss their description", async () => {
@@ -60,9 +77,9 @@ test("information tooltips clamp to the viewport and keep their heading trigger 
     tooltipCss,
     /\.tooltip\[data-open="true"\]\[data-positioned="false"\][\s\S]*?visibility: hidden;/,
   );
-  assert.match(home, /\.panelHead > h2 \{[\s\S]*?flex: 1 1 auto;[\s\S]*?min-width: 0;/);
-  assert.match(globals, /@media \(min-width: 901px\) and \(max-width: 980px\)/);
-  assert.match(globals, /\.header-search \{ order: 3; width: 100%; \}/);
+  assert.match(home, /\.panelHead > div \{[\s\S]*?flex:\s*1 1 auto;[\s\S]*?min-width:\s*0;/);
+  assert.match(globals, /@media \(max-width: 900px\)/);
+  assert.match(globals, /\.header-search \{[\s\S]*?grid-column: 1 \/ -1;[\s\S]*?width: 100%;/);
 });
 
 test("CI verifies every main commit and uses the current artifact runtime", async () => {
@@ -106,6 +123,9 @@ test("the regional map has a deterministic fallback and roving keyboard focus", 
   assert.match(map, /"ArrowLeft"|"ArrowUp"/);
   assert.match(map, /regionPathRefs\.current\.get\(nextCode\)\?\.focus\(\)/);
   assert.match(map, /<select[\s\S]*?value=\{selectedCode\}/);
+  assert.match(map, /data-map-semantics=\{showProvinceGeometry \? "province-colors-region-interaction"/);
+  assert.match(map, /I colori rappresentano i valori provinciali/);
+  assert.match(map, /Selezione per regione/);
 });
 
 test("the mobile region selector is sorted once with Italian collation", async () => {
@@ -146,6 +166,21 @@ test("reported chart styles stay within the registry design tokens", async () =>
     assert.doesNotMatch(chart, /radius=\{\[[^\]]*3/);
     assert.match(chart, /radius=\{0\}/);
   }
+});
+
+test("quantitative bars reserve red for alerts and actions", async () => {
+  const [tokens, spending, cohesion, companies] = await Promise.all([
+    source("../src/app/design-system.css"),
+    source("../src/app/spese/spese.module.css"),
+    source("../src/app/coesione/coesione.module.css"),
+    source("../src/app/imprese/imprese.module.css"),
+  ]);
+
+  assert.match(tokens, /--chart-primary: var\(--chart-data-primary\);/);
+  assert.match(spending, /\.titleTrack i \{[\s\S]*?background: var\(--chart-data-primary\);/);
+  assert.match(spending, /\.monthList li > i > b \{[\s\S]*?background: var\(--chart-data-primary\);/);
+  assert.match(cohesion, /\.statusList li > i > b,[\s\S]*?background: var\(--chart-progress\);/);
+  assert.match(companies, /\.sectorList i b \{[\s\S]*?background: var\(--chart-data-primary\);/);
 });
 
 test("strong civic surfaces use defined foreground tokens", async () => {
@@ -209,4 +244,30 @@ test("the narrow mobile header never collapses the wordmark into a text column",
     /@media \(max-width: 460px\) \{[\s\S]*?\.brand-text \{ display: none; \}[\s\S]*?\}/,
   );
   assert.match(navigation, /className="brand" aria-label="Dove vanno i nostri soldi, home"/);
+});
+
+test("secondary pages keep route identity and a restrained mobile heading", async () => {
+  const [entities, stateCss] = await Promise.all([
+    source("../src/app/enti/page.tsx"),
+    source("../src/app/stato/stato.module.css"),
+  ]);
+
+  assert.match(entities, /export const metadata: Metadata = \{[\s\S]*?title: "Registro degli enti pubblici"/);
+  assert.match(stateCss, /@media \(max-width: 720px\) \{[\s\S]*?\.title \{[\s\S]*?font-size: clamp\(32px, 9vw, 42px\);/);
+});
+
+test("the relationship explorer uses its module styles and keeps result context", async () => {
+  const explorer = await source("../src/app/esplora/EsploraSearch.tsx");
+
+  assert.match(explorer, /import styles from "\.\/esplora\.module\.css";/);
+  assert.match(explorer, /className=\{styles\.searchInput\}/);
+  assert.match(explorer, /className=\{styles\.relationList\}/);
+  assert.match(explorer, /r\.period/);
+  assert.match(explorer, /euro\.format\(r\.amount\)/);
+  assert.match(explorer, /r\.confidence_note/);
+  assert.match(explorer, /new AbortController\(\)/);
+  assert.match(explorer, /signal: controller\.signal/);
+  assert.match(explorer, /sequence\.current !== currentSequence/);
+  assert.match(explorer, /sequence\.current \+= 1/);
+  assert.doesNotMatch(explorer, /className="(?:search-input|relation-list|relation-item)"/);
 });

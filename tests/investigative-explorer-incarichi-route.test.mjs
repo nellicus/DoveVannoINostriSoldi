@@ -1,27 +1,73 @@
-// Reference route test for GET /api/esplora (issue #105).
-//
-// This test needs the Next.js runtime, so it is skipped unless RUN_SERVER_TESTS=1
-// (in the DVNS fork set that env var under `npm run test:node` / vitest with the
-// Next test environment started). It is provided as the contract the route must
-// satisfy; it does NOT run in this standalone repository.
-import { test } from "node:test";
 import assert from "node:assert/strict";
+import test from "node:test";
+import "./helpers/register-ts-alias.mjs";
 
-const BASE = process.env.BASE_URL ?? "http://localhost:3000";
+const { GET } = await import("../src/app/api/esplora/route.ts");
 
-test("GET /api/esplora?q= filtra e non fonde persone", { skip: !process.env.RUN_SERVER_TESTS }, async () => {
-  const res = await fetch(`${BASE}/api/esplora?q=ROSSI&limit=50`);
-  assert.equal(res.status, 200);
-  const data = await res.json();
-  assert.equal(typeof data.query, "string");
+test("GET /api/esplora filtra senza fondere persone", async () => {
+  const response = GET(new Request("https://example.test/api/esplora?q=ROSSI&limit=50"));
+  assert.equal(response.status, 200);
+  assert.equal(response.headers.get("cache-control"), "no-store");
+  assert.equal(response.headers.get("content-type"), "application/json; charset=utf-8");
+  assert.equal(response.headers.get("x-content-type-options"), "nosniff");
+
+  const data = await response.json();
+  assert.equal(data.query, "ROSSI");
   assert.ok(Array.isArray(data.results));
-  const ids = new Set(data.results.map((r) => r.source_record_id));
+  assert.ok(data.results.length <= 50);
+  const ids = new Set(data.results.map((result) => result.source_record_id));
   assert.equal(ids.size, data.results.length, "nessun arco duplicato nella risposta");
-  for (const r of data.results) {
-    assert.ok(
-      (r.subject_key + r.object_key).toUpperCase().includes("ROSSI") ||
-        r.source_record_id.toUpperCase().includes("ROSSI"),
-      "risultato fuori query",
-    );
+  for (const result of data.results) {
+    const haystack = [
+      result.subject_key,
+      result.object_key,
+      result.source_record_id,
+      ...(result.references?.cig ?? []),
+      ...(result.references?.cup ?? []),
+    ].join(" ");
+    assert.ok(!("note_source" in result));
+    assert.match(haystack, /ROSSI/i, "risultato fuori query");
   }
+});
+
+test("GET /api/esplora espone un hint sicuro senza query", async () => {
+  const response = GET(new Request("https://example.test/api/esplora"));
+  assert.equal(response.status, 200);
+  assert.equal(response.headers.get("cache-control"), "no-store");
+  assert.equal(response.headers.get("content-type"), "application/json; charset=utf-8");
+  assert.equal(response.headers.get("x-content-type-options"), "nosniff");
+  const data = await response.json();
+  assert.equal(data.dataset, "incarichi-nominativi-shard");
+  assert.match(data.hint, /\?q=/);
+});
+
+test("GET /api/esplora rifiuta query oltre 200 caratteri", async () => {
+  const query = "a".repeat(201);
+  const response = GET(new Request(`https://example.test/api/esplora?q=${query}`));
+  assert.equal(response.status, 400);
+  assert.equal(response.headers.get("cache-control"), "no-store");
+  assert.equal(response.headers.get("x-content-type-options"), "nosniff");
+  const data = await response.json();
+  assert.match(data.error, /200 caratteri/);
+});
+
+test("GET /api/esplora rifiuta limit non intero o non positivo", async () => {
+  for (const value of ["0", "-1", "1.5", "501", "Infinity", "999999999999999999999"]) {
+    const response = GET(new Request(`https://example.test/api/esplora?q=ROSSI&limit=${value}`));
+    assert.equal(response.status, 400, value);
+    assert.match(response.headers.get("content-type") ?? "", /^application\/json\b/);
+  }
+});
+
+test("GET /api/esplora mantiene la risposta proiettata sotto 750 KiB", async () => {
+  const response = GET(new Request("https://example.test/api/esplora?q=CONSULENTE&limit=500"));
+  const body = await response.text();
+  assert.ok(new TextEncoder().encode(body).byteLength <= 750 * 1024);
+  const data = JSON.parse(body);
+  assert.ok(Array.isArray(data.results));
+  assert.equal(data.count, data.results.length);
+  assert.ok(data.results.every((result) => !("note_source" in result)));
+  assert.match(response.headers.get("content-type") ?? "", /^application\/json\b/);
+  assert.equal(response.headers.get("cache-control"), "no-store");
+  assert.equal(response.headers.get("x-content-type-options"), "nosniff");
 });
