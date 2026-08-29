@@ -123,7 +123,7 @@ function NavigationContent({ pathname, currentSearch }: NavigationContentProps) 
   const resetMobileNavigationOnDesktop = useCallback(() => setMobileOpen(false), []);
   const moveFocusOutOfClosingSidebar = useCallback(() => {
     if (sidebarRef.current?.contains(document.activeElement)) {
-      mobileToggleRef.current?.focus();
+      window.requestAnimationFrame(() => mobileToggleRef.current?.focus());
     }
   }, []);
   const subscribeToViewport = useCallback(
