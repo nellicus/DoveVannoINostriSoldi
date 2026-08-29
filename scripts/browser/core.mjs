@@ -884,11 +884,22 @@ try {
       await page.setViewport({ width: 390, height: 900 });
       await page.waitForFunction(() => {
         const sidebar = document.querySelector("#dashboard-sidebar");
-        const toggle = document.querySelector('button[aria-controls="dashboard-sidebar"]');
         return sidebar?.inert === true &&
-          sidebar.getAttribute("data-mobile-open") !== "true" &&
-          document.activeElement === toggle;
+          sidebar.getAttribute("data-mobile-open") !== "true";
       });
+      const resizedFocus = await page.evaluate(() => {
+        const active = document.activeElement;
+        const rect = active?.getBoundingClientRect();
+        return {
+          insideSidebar: Boolean(active?.closest("#dashboard-sidebar")),
+          visible: Boolean(rect && rect.right >= 0 && rect.left <= innerWidth),
+        };
+      });
+      assert.deepEqual(
+        resizedFocus,
+        { insideSidebar: false, visible: true },
+        "Navigazione mobile: il focus resta nel drawer chiuso dopo il resize",
+      );
     },
   });
   completed.push("Navigazione mobile accessibile 390px");
