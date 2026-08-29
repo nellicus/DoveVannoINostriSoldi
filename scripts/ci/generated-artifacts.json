@@ -707,6 +707,33 @@
         "requiresNetworkInput": false
       },
       "trustModel": "Curated slice from committed integrated rows (incarichi-nominativi-shard); --check validates offline, no person auto-merge."
+    },
+    {
+      "id": "eurostat-taxag",
+      "owner": "Eurostat tax aggregates by institutional subsector",
+      "files": [
+        "src/data/generated/eurostat-taxag.json"
+      ],
+      "verificationMode": "source-lock",
+      "offlineCheck": {
+        "command": "python scripts/etl/eurostat_tax_aggregates.py --check",
+        "coveredBy": "standalone"
+      },
+      "reconciliationTests": [
+        "tests/etl/test_eurostat_tax_aggregates.py"
+      ],
+      "nodeTests": [
+        "tests/eurostat-taxag-contract.test.mjs",
+        "tests/eurostat-taxag-route.test.mjs",
+        "tests/eurostat-taxag-ui.test.mjs"
+      ],
+      "generator": {
+        "command": "python scripts/etl/eurostat_tax_aggregates.py",
+        "requiresNetworkInput": true
+      },
+      "refreshWorkflow": ".github/workflows/eurostat-taxag-refresh.yml",
+      "sourceSpec": "scripts/etl/specs/eurostat-taxag.source.json",
+      "trustModel": "Source-lock: dataset code, dimensions, codes and upstream labels are pinned in the spec. PR validation checks the committed artifact offline; the scheduled workflow regenerates into a scratch path and reports a drift for human review instead of committing."
     }
   ]
 }

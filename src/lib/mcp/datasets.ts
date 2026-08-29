@@ -333,6 +333,10 @@ export async function queryPublicDataset(
       const { getPublicDebtView } = await import("@/lib/public-debt");
       return jsonSafe(getPublicDebtView());
     }
+    case "eurostat_entrate_sottosettore": {
+      const { getEurostatTaxagView } = await import("@/lib/eurostat-taxag");
+      return jsonSafe(getEurostatTaxagView());
+    }
     case "registro_fonti": {
       const { publicSources } = await import("@/lib/sources");
       const term = query.query?.trim().toLocaleLowerCase("it-IT");

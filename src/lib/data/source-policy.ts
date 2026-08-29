@@ -309,17 +309,17 @@ export const SOURCE_POLICIES: Readonly<Record<SourceId, SourcePolicy>> = {
   },
   eurostat: {
     id: "eurostat",
-    label: "Eurostat · interessi sul debito",
+    label: "Eurostat · conti nazionali",
     owner: "Eurostat",
     sourceUrl: "https://ec.europa.eu/eurostat/databrowser/view/gov_10a_main/default/table?lang=en",
     cadence: "annuale",
-    cadenceNote: "Interessi e spesa pubblica totale sono dati annuali di contabilità nazionale.",
+    cadenceNote: "Interessi, spesa pubblica totale ed entrate fiscali per sottosettore sono dati annuali di contabilità nazionale.",
     discoveryRevalidateSeconds: DAY,
     dataRevalidateSeconds: DAY,
     staleAfterSeconds: 540 * DAY,
     timeoutMs: 20_000,
     maxRetries: 2,
-    tags: ["source:eurostat", "domain:public-debt"],
+    tags: ["source:eurostat", "domain:public-debt", "domain:tax-revenue"],
   },
 };
 

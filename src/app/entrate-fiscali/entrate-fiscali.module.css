@@ -1,0 +1,92 @@
+.kicker {
+  display: block;
+  margin-bottom: 6px;
+  color: var(--color-accent-700);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: .09em;
+  text-transform: uppercase;
+}
+
+.periodStrip:global(.stat-strip) {
+  margin-bottom: var(--space-4);
+}
+
+.section {
+  margin-bottom: var(--space-4);
+}
+
+.sectionTitle {
+  margin-bottom: var(--space-2);
+}
+
+.meta {
+  color: var(--color-neutral-600) !important;
+  font-size: 12px;
+  line-height: 1.55;
+}
+
+.barList {
+  display: grid;
+  gap: 14px;
+  margin: 0 0 var(--space-3);
+  padding: 0;
+  list-style: none;
+}
+
+.barList li {
+  min-width: 0;
+}
+
+.barList li > div {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-3);
+  margin-bottom: 6px;
+}
+
+.barList li > div span {
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.bar {
+  display: block;
+  height: 8px;
+  overflow: hidden;
+  background: var(--color-neutral-200);
+}
+
+.bar > span {
+  display: block;
+  height: 100%;
+  background: var(--chart-primary);
+}
+
+.tableWrap {
+  overflow-x: auto;
+}
+
+.caveats {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding-left: 20px;
+  color: var(--color-neutral-700);
+}
+
+.provenanceSection {
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--color-neutral-300);
+}
+
+.provenanceActions {
+  font-size: 13px;
+}
+
+@media (max-width: 640px) {
+  .barList li > div {
+    flex-direction: column;
+    gap: 2px;
+  }
+}

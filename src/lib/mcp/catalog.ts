@@ -27,6 +27,7 @@ export const DATASET_IDS = [
   "parlamento_bilanci",
   "controlli_segnali",
   "debito_pubblico_italiano",
+  "eurostat_entrate_sottosettore",
   "registro_fonti",
   "spesa_pa_dettaglio",
   "company_active_enterprises",
@@ -119,6 +120,7 @@ const exampleQueries = {
   parlamento_bilanci: { dataset: "parlamento_bilanci", chamber: "camera", year: 2024 },
   controlli_segnali: { dataset: "controlli_segnali", area: "spesa-comuni", year: 2022, limit: 20 },
   debito_pubblico_italiano: { dataset: "debito_pubblico_italiano" },
+  eurostat_entrate_sottosettore: { dataset: "eurostat_entrate_sottosettore" },
   registro_fonti: { dataset: "registro_fonti", query: "SIOPE" },
   spesa_pa_dettaglio: {
     dataset: "spesa_pa_dettaglio",
@@ -186,6 +188,17 @@ const datasetDescriptors: DatasetDescriptorInput[] = [
   { id: "parlamento_bilanci", title: "Bilanci del Parlamento", summary: "Documenti e valori strutturati verificati per Camera e Senato quando disponibili.", sourceIds: ["camera"], freshness: "snapshot", filters: ["chamber", "year"] },
   { id: "controlli_segnali", title: "Segnali da controllare", summary: "Indicatori, classificazioni e screening derivati che orientano verifiche ulteriori.", sourceIds: ["opencivitas"], freshness: "snapshot", filters: ["area", "year", "region", "limit", "offset"], caveat: "Un segnale, compreso lo screening OpenCivitas, non attribuisce responsabilità e non dimostra da solo spreco o illecito." },
   { id: "debito_pubblico_italiano", title: "Debito pubblico italiano", summary: "Stock Maastricht, variazioni mensili, composizione, detentori, vita residua e interessi annuali.", sourceIds: ["bancaditalia", "eurostat"], freshness: "snapshot", filters: [], caveat: "Stock, flussi netti, detentori e interessi hanno periodi diversi. Le fonti pubblicano importi in milioni di euro: la conversione in centesimi interi non aggiunge precisione alla misura originaria. Gli indicatori per il cittadino descrivono esposizioni e meccanismi, non previsioni né effetti individuali." },
+  {
+    id: "eurostat_entrate_sottosettore",
+    title: "Entrate fiscali per sottosettore",
+    summary:
+      "Imposte italiane per sottosettore istituzionale ESA 2010, su due denominatori: sole imposte e imposte piu contributi sociali.",
+    sourceIds: ["eurostat"],
+    freshness: "snapshot",
+    filters: [],
+    caveat:
+      "La quota di un sottosettore dice dove l'imposta e contabilizzata, non dove il denaro resta: fra amministrazioni esistono trasferimenti. Le due misure hanno denominatori diversi e non vanno confrontate ne sommate: per il 2025 la quota delle amministrazioni centrali vale 85,7% sulle sole imposte e 59,1% includendo i contributi sociali. Le quote sono ricalcolate dagli importi; l'unita PC_TOT di Eurostat non e la quota fra sottosettori. Un importo assente resta assente e non vale zero.",
+  },
   { id: "registro_fonti", title: "Registro delle fonti", summary: "Proprietari, copertura, formati, cadenza e stato di integrazione delle fonti censite.", sourceIds: [], freshness: "snapshot", filters: ["query"] },
   {
     id: "spesa_pa_dettaglio",

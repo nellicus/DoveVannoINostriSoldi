@@ -25,6 +25,7 @@ import { MEF_IRPEF_SOURCE } from "@/lib/data/mef-irpef-source";
 import { PNRR_CHILDCARE_SOURCE } from "@/lib/data/pnrr-childcare-source";
 import { getSsnCceSourceHealth, type SsnCceSourceHealth } from "@/lib/ssn-cce-snapshot";
 import { getPublicDebtSnapshot } from "@/lib/public-debt";
+import { getEurostatTaxagSnapshot } from "@/lib/eurostat-taxag";
 import istatMunicipalityGeographyMetadata from "@/data/generated/istat-municipality-geography.meta.json";
 
 export type SourceIntegrationState = "active";
@@ -542,16 +543,30 @@ function snapshotManagedPcm(): SourceHealth {
 
 function snapshotManagedPublicDebt(sourceId: "bancaditalia" | "eurostat"): SourceHealth {
   const snapshot = getPublicDebtSnapshot();
-  const isBank = sourceId === "bancaditalia";
+  if (sourceId === "bancaditalia") {
+    return {
+      ...baseHealth(sourceId),
+      reachability: "not-probed",
+      freshness: freshnessFor(sourceId, snapshot.stock.referenceDate),
+      latencyMs: null,
+      detail: `Snapshot ETL attivo · stock al ${snapshot.stock.referenceDate} · quattro cubi BDS riconciliati.`,
+      recordCount: snapshot.stock.history.length,
+    };
+  }
+  // Un'unica scheda copre due dataset Eurostat. La freschezza segue il più
+  // vecchio dei due: un dataset aggiornato non deve nascondere l'invecchiamento
+  // dell'altro.
+  const taxag = getEurostatTaxagSnapshot();
+  const interestYear = snapshot.annualInterest.referenceYear;
+  const taxagYear = taxag.years.at(-1) ?? interestYear;
+  const oldestYear = Math.min(interestYear, taxagYear);
   return {
     ...baseHealth(sourceId),
     reachability: "not-probed",
-    freshness: freshnessFor(sourceId, isBank ? snapshot.stock.referenceDate : `${snapshot.annualInterest.referenceYear}-12-31`),
+    freshness: freshnessFor(sourceId, `${oldestYear}-12-31`),
     latencyMs: null,
-    detail: isBank
-      ? `Snapshot ETL attivo · stock al ${snapshot.stock.referenceDate} · quattro cubi BDS riconciliati.`
-      : `Snapshot ETL attivo · interessi e spesa totale ${snapshot.annualInterest.referenceYear} riconciliati.`,
-    recordCount: isBank ? snapshot.stock.history.length : snapshot.annualInterest.history.length,
+    detail: `Snapshot ETL attivo · interessi e spesa totale ${interestYear} · entrate per sottosettore ${taxagYear}.`,
+    recordCount: snapshot.annualInterest.history.length + taxag.years.length,
   };
 }
 
