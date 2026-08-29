@@ -1,0 +1,130 @@
+{
+  "version": "2.0",
+  "class": "dataset",
+  "label": "Main national accounts tax aggregates",
+  "source": "ESTAT",
+  "updated": "2026-07-21T11:00:00+0200",
+  "id": [
+    "geo",
+    "time",
+    "na_item",
+    "unit",
+    "freq",
+    "sector"
+  ],
+  "size": [
+    1,
+    3,
+    2,
+    1,
+    1,
+    6
+  ],
+  "dimension": {
+    "geo": {
+      "category": {
+        "index": {
+          "IT": 0
+        },
+        "label": {
+          "IT": "Italy"
+        }
+      }
+    },
+    "time": {
+      "category": {
+        "index": {
+          "2023": 0,
+          "2024": 1,
+          "2025": 2
+        },
+        "label": {
+          "2023": "2023",
+          "2024": "2024",
+          "2025": "2025"
+        }
+      }
+    },
+    "na_item": {
+      "category": {
+        "index": {
+          "D2_D5_D91": 0,
+          "D2_D5_D91_D61_M_D995": 1
+        },
+        "label": {
+          "D2_D5_D91": "Total tax receipts",
+          "D2_D5_D91_D61_M_D995": "Total receipts from taxes and social contributions (including imputed social contributions) after deduction of amounts assessed but unlikely to be collected"
+        }
+      }
+    },
+    "unit": {
+      "category": {
+        "index": {
+          "MIO_EUR": 0
+        },
+        "label": {
+          "MIO_EUR": "Million euro"
+        }
+      }
+    },
+    "freq": {
+      "category": {
+        "index": {
+          "A": 0
+        },
+        "label": {
+          "A": "Annual"
+        }
+      }
+    },
+    "sector": {
+      "category": {
+        "index": {
+          "S13_S212": 0,
+          "S1311": 1,
+          "S1312": 2,
+          "S1313": 3,
+          "S1314": 4,
+          "S212": 5
+        },
+        "label": {
+          "S13_S212": "General government; institutions of the EU",
+          "S1311": "Central government",
+          "S1312": "State government",
+          "S1313": "Local government",
+          "S1314": "Social security funds",
+          "S212": "Institutions and bodies of the European Union"
+        }
+      }
+    }
+  },
+  "value": {
+    "1": 850,
+    "3": 130,
+    "5": 20,
+    "0": 1000,
+    "7": 600,
+    "9": 100,
+    "10": 290,
+    "11": 10,
+    "6": 1000,
+    "13": 860,
+    "15": 130,
+    "17": 20,
+    "12": 1010,
+    "19": 610,
+    "21": 100,
+    "22": 290,
+    "23": 10,
+    "18": 1010,
+    "25": 870,
+    "27": 130,
+    "29": 20,
+    "24": 1020,
+    "31": 620,
+    "33": 100,
+    "34": 290,
+    "35": 10,
+    "30": 1020
+  }
+}

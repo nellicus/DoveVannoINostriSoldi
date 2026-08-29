@@ -1,0 +1,78 @@
+name: Eurostat tax aggregates snapshot
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - scripts/etl/specs/eurostat-taxag.source.json
+      - scripts/etl/eurostat_tax_aggregates.py
+      - tests/etl/test_eurostat_tax_aggregates.py
+      - src/data/generated/eurostat-taxag.json
+      - .github/workflows/eurostat-taxag-refresh.yml
+  schedule:
+    - cron: "43 7 * * 1"
+  workflow_dispatch:
+
+# contents: read — least-privilege: only read repository contents.
+permissions:
+  contents: read
+
+concurrency:
+  group: eurostat-taxag-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  offline-contract:
+    name: offline-contract
+    if: github.event_name == 'push'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7
+        with:
+          python-version: "3.12"
+      - name: Run fail-closed ETL tests
+        run: python -m unittest -v tests/etl/test_eurostat_tax_aggregates.py
+      - name: Validate the committed artifact without network
+        run: python scripts/etl/eurostat_tax_aggregates.py --check
+
+  verify-upstream:
+    name: verify-upstream
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7
+        with:
+          python-version: "3.12"
+      # Regenerates into a scratch path and compares with the committed
+      # artifact. It never writes to the repository: a drift is reported so a
+      # human can review it, because a new Eurostat release can revise past
+      # years and that is a data-meaning decision, not a routine bump.
+      - name: Compare the committed snapshot with the live release
+        env:
+          COMMITTED: src/data/generated/eurostat-taxag.json
+        run: |
+          python scripts/etl/eurostat_tax_aggregates.py --output "${RUNNER_TEMP}/eurostat-taxag.json"
+          if diff -q "${COMMITTED}" "${RUNNER_TEMP}/eurostat-taxag.json" > /dev/null; then
+            echo "Lo snapshot committato coincide con il rilascio corrente."
+          else
+            echo "::warning title=Eurostat gov_10a_taxag::Il rilascio corrente differisce dallo snapshot committato: serve una revisione."
+            diff -u "${COMMITTED}" "${RUNNER_TEMP}/eurostat-taxag.json" || true
+            exit 1
+          fi
+
+      - name: Upload the candidate snapshot
+        if: failure()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: eurostat-taxag-candidate
+          path: ${{ runner.temp }}/eurostat-taxag.json
+          if-no-files-found: error
+          retention-days: 14

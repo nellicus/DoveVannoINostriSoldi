@@ -1,0 +1,714 @@
+{
+  "schemaVersion": 1,
+  "geo": {
+    "code": "IT",
+    "label": "Italia"
+  },
+  "unit": "euro_cents",
+  "valueEncoding": "integer_cents",
+  "years": [
+    2016,
+    2017,
+    2018,
+    2019,
+    2020,
+    2021,
+    2022,
+    2023,
+    2024,
+    2025
+  ],
+  "sectors": [
+    {
+      "code": "S1311",
+      "label": "Central government",
+      "labelIt": "Amministrazioni centrali"
+    },
+    {
+      "code": "S1312",
+      "label": "State government",
+      "labelIt": "Amministrazioni di livello statale federato"
+    },
+    {
+      "code": "S1313",
+      "label": "Local government",
+      "labelIt": "Amministrazioni locali"
+    },
+    {
+      "code": "S1314",
+      "label": "Social security funds",
+      "labelIt": "Enti di previdenza e assistenza sociale"
+    },
+    {
+      "code": "S212",
+      "label": "Institutions and bodies of the European Union",
+      "labelIt": "Istituzioni e organismi dell'Unione europea"
+    }
+  ],
+  "totalSector": {
+    "code": "S13_S212",
+    "label": "General government; institutions of the EU",
+    "labelIt": "Amministrazioni pubbliche e istituzioni dell'Unione europea"
+  },
+  "aggregates": [
+    {
+      "code": "D2_D5_D91",
+      "label": "Total tax receipts",
+      "labelIt": "Imposte, senza contributi sociali",
+      "denominator": "imposte su produzione e importazioni, imposte correnti su reddito e patrimonio, imposte in conto capitale",
+      "series": [
+        {
+          "year": 2016,
+          "total": 50093700000000,
+          "sectors": [
+            {
+              "code": "S1311",
+              "amount": 42763100000000,
+              "shareBasisPoints": 8537
+            },
+            {
+              "code": "S1312",
+              "amount": null,
+              "shareBasisPoints": null
+            },
+            {
+              "code": "S1313",
+              "amount": 7030100000000,
+              "shareBasisPoints": 1403
+            },
+            {
+              "code": "S1314",
+              "amount": null,
+              "shareBasisPoints": null
+            },
+            {
+              "code": "S212",
+              "amount": 300500000000,
+              "shareBasisPoints": 60
+            }
+          ]
+        },
+        {
+          "year": 2017,
+          "total": 50788000000000,
+          "sectors": [
+            {
+              "code": "S1311",
+              "amount": 43084100000000,
+              "shareBasisPoints": 8483
+            },
+            {
+              "code": "S1312",
+              "amount": null,
+              "shareBasisPoints": null
+            },
+            {
+              "code": "S1313",
+              "amount": 7246600000000,
+              "shareBasisPoints": 1427
+            },
+            {
+              "code": "S1314",
+              "amount": null,
+              "shareBasisPoints": null
+            },
+            {
+              "code": "S212",
+              "amount": 457300000000,
+              "shareBasisPoints": 90
+            }
+          ]
+        },
+        {
+          "year": 2018,
+          "total": 50976800000000,
+          "sectors": [
+            {
+              "code": "S1311",
+              "amount": 43098900000000,
+              "shareBasisPoints": 8455
+            },
+            {
+              "code": "S1312",
+              "amount": null,
+              "shareBasisPoints": null
+            },
+            {
+              "code": "S1313",
+              "amount": 7535500000000,
+              "shareBasisPoints": 1478
+            },
+            {
+              "code": "S1314",
+              "amount": null,
+              "shareBasisPoints": null
+            },
+            {
+              "code": "S212",
+              "amount": 342400000000,
+              "shareBasisPoints": 67
+            }
+          ]
+        },
+        {
+          "year": 2019,
+          "total": 52410500000000,
+          "sectors": [
+            {
+              "code": "S1311",
+              "amount": 44491200000000,
+              "shareBasisPoints": 8489
+            },
+            {
+              "code": "S1312",
+              "amount": null,
+              "shareBasisPoints": null
+            },
+            {
+              "code": "S1313",
+              "amount": 7603300000000,
+              "shareBasisPoints": 1451
+            },
+            {
+              "code": "S1314",
+              "amount": null,
+              "shareBasisPoints": null
+            },
+            {
+              "code": "S212",
+              "amount": 316000000000,
+              "shareBasisPoints": 60
+            }
+          ]
+        },
+        {
+          "year": 2020,
+          "total": 48617800000000,
+          "sectors": [
+            {
+              "code": "S1311",
+              "amount": 41492800000000,
+              "shareBasisPoints": 8534
+            },
+            {
+              "code": "S1312",
+              "amount": null,
+              "shareBasisPoints": null
+            },
+            {
+              "code": "S1313",
+              "amount": 6829800000000,
+              "shareBasisPoints": 1405
+            },
+            {
+              "code": "S1314",
+              "amount": null,
+              "shareBasisPoints": null
+            },
+            {
+              "code": "S212",
+              "amount": 295200000000,
+              "shareBasisPoints": 61
+            }
+          ]
+        },
+        {
+          "year": 2021,
+          "total": 53556300000000,
+          "sectors": [
+            {
+              "code": "S1311",
+              "amount": 45835900000000,
+              "shareBasisPoints": 8558
+            },
+            {
+              "code": "S1312",
+              "amount": null,
+              "shareBasisPoints": null
+            },
+            {
+              "code": "S1313",
+              "amount": 7369900000000,
+              "shareBasisPoints": 1376
+            },
+            {
+              "code": "S1314",
+              "amount": null,
+              "shareBasisPoints": null
+            },
+            {
+              "code": "S212",
+              "amount": 350500000000,
+              "shareBasisPoints": 65
+            }
+          ]
+        },
+        {
+          "year": 2022,
+          "total": 57702600000000,
+          "sectors": [
+            {
+              "code": "S1311",
+              "amount": 49165400000000,
+              "shareBasisPoints": 8520
+            },
+            {
+              "code": "S1312",
+              "amount": null,
+              "shareBasisPoints": null
+            },
+            {
+              "code": "S1313",
+              "amount": 8028200000000,
+              "shareBasisPoints": 1391
+            },
+            {
+              "code": "S1314",
+              "amount": null,
+              "shareBasisPoints": null
+            },
+            {
+              "code": "S212",
+              "amount": 509000000000,
+              "shareBasisPoints": 88
+            }
+          ]
+        },
+        {
+          "year": 2023,
+          "total": 61901200000000,
+          "sectors": [
+            {
+              "code": "S1311",
+              "amount": 53002600000000,
+              "shareBasisPoints": 8562
+            },
+            {
+              "code": "S1312",
+              "amount": null,
+              "shareBasisPoints": null
+            },
+            {
+              "code": "S1313",
+              "amount": 8479200000000,
+              "shareBasisPoints": 1370
+            },
+            {
+              "code": "S1314",
+              "amount": null,
+              "shareBasisPoints": null
+            },
+            {
+              "code": "S212",
+              "amount": 419400000000,
+              "shareBasisPoints": 68
+            }
+          ]
+        },
+        {
+          "year": 2024,
+          "total": 65795900000000,
+          "sectors": [
+            {
+              "code": "S1311",
+              "amount": 56391000000000,
+              "shareBasisPoints": 8571
+            },
+            {
+              "code": "S1312",
+              "amount": null,
+              "shareBasisPoints": null
+            },
+            {
+              "code": "S1313",
+              "amount": 9105900000000,
+              "shareBasisPoints": 1384
+            },
+            {
+              "code": "S1314",
+              "amount": null,
+              "shareBasisPoints": null
+            },
+            {
+              "code": "S212",
+              "amount": 299000000000,
+              "shareBasisPoints": 45
+            }
+          ]
+        },
+        {
+          "year": 2025,
+          "total": 66989800000000,
+          "sectors": [
+            {
+              "code": "S1311",
+              "amount": 57420800000000,
+              "shareBasisPoints": 8572
+            },
+            {
+              "code": "S1312",
+              "amount": null,
+              "shareBasisPoints": null
+            },
+            {
+              "code": "S1313",
+              "amount": 9242900000000,
+              "shareBasisPoints": 1380
+            },
+            {
+              "code": "S1314",
+              "amount": null,
+              "shareBasisPoints": null
+            },
+            {
+              "code": "S212",
+              "amount": 326100000000,
+              "shareBasisPoints": 49
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "code": "D2_D5_D91_D61_M_D995",
+      "label": "Total receipts from taxes and social contributions (including imputed social contributions) after deduction of amounts assessed but unlikely to be collected",
+      "labelIt": "Imposte e contributi sociali, al netto degli importi inesigibili",
+      "denominator": "le stesse imposte piu i contributi sociali netti",
+      "series": [
+        {
+          "year": 2016,
+          "total": 72168900000000,
+          "sectors": [
+            {
+              "code": "S1311",
+              "amount": 42999000000000,
+              "shareBasisPoints": 5958
+            },
+            {
+              "code": "S1312",
+              "amount": null,
+              "shareBasisPoints": null
+            },
+            {
+              "code": "S1313",
+              "amount": 7144100000000,
+              "shareBasisPoints": 990
+            },
+            {
+              "code": "S1314",
+              "amount": 21725300000000,
+              "shareBasisPoints": 3010
+            },
+            {
+              "code": "S212",
+              "amount": 300500000000,
+              "shareBasisPoints": 42
+            }
+          ]
+        },
+        {
+          "year": 2017,
+          "total": 73387200000000,
+          "sectors": [
+            {
+              "code": "S1311",
+              "amount": 43326700000000,
+              "shareBasisPoints": 5904
+            },
+            {
+              "code": "S1312",
+              "amount": null,
+              "shareBasisPoints": null
+            },
+            {
+              "code": "S1313",
+              "amount": 7370000000000,
+              "shareBasisPoints": 1004
+            },
+            {
+              "code": "S1314",
+              "amount": 22233200000000,
+              "shareBasisPoints": 3030
+            },
+            {
+              "code": "S212",
+              "amount": 457300000000,
+              "shareBasisPoints": 62
+            }
+          ]
+        },
+        {
+          "year": 2018,
+          "total": 74391000000000,
+          "sectors": [
+            {
+              "code": "S1311",
+              "amount": 43328300000000,
+              "shareBasisPoints": 5824
+            },
+            {
+              "code": "S1312",
+              "amount": null,
+              "shareBasisPoints": null
+            },
+            {
+              "code": "S1313",
+              "amount": 7660200000000,
+              "shareBasisPoints": 1030
+            },
+            {
+              "code": "S1314",
+              "amount": 23060100000000,
+              "shareBasisPoints": 3100
+            },
+            {
+              "code": "S212",
+              "amount": 342400000000,
+              "shareBasisPoints": 46
+            }
+          ]
+        },
+        {
+          "year": 2019,
+          "total": 76612500000000,
+          "sectors": [
+            {
+              "code": "S1311",
+              "amount": 44739200000000,
+              "shareBasisPoints": 5840
+            },
+            {
+              "code": "S1312",
+              "amount": null,
+              "shareBasisPoints": null
+            },
+            {
+              "code": "S1313",
+              "amount": 7732500000000,
+              "shareBasisPoints": 1009
+            },
+            {
+              "code": "S1314",
+              "amount": 23824800000000,
+              "shareBasisPoints": 3110
+            },
+            {
+              "code": "S212",
+              "amount": 316000000000,
+              "shareBasisPoints": 41
+            }
+          ]
+        },
+        {
+          "year": 2020,
+          "total": 71651500000000,
+          "sectors": [
+            {
+              "code": "S1311",
+              "amount": 41749500000000,
+              "shareBasisPoints": 5827
+            },
+            {
+              "code": "S1312",
+              "amount": null,
+              "shareBasisPoints": null
+            },
+            {
+              "code": "S1313",
+              "amount": 6957300000000,
+              "shareBasisPoints": 971
+            },
+            {
+              "code": "S1314",
+              "amount": 22649500000000,
+              "shareBasisPoints": 3161
+            },
+            {
+              "code": "S212",
+              "amount": 295200000000,
+              "shareBasisPoints": 41
+            }
+          ]
+        },
+        {
+          "year": 2021,
+          "total": 78314000000000,
+          "sectors": [
+            {
+              "code": "S1311",
+              "amount": 46116600000000,
+              "shareBasisPoints": 5889
+            },
+            {
+              "code": "S1312",
+              "amount": null,
+              "shareBasisPoints": null
+            },
+            {
+              "code": "S1313",
+              "amount": 7510400000000,
+              "shareBasisPoints": 959
+            },
+            {
+              "code": "S1314",
+              "amount": 24336500000000,
+              "shareBasisPoints": 3108
+            },
+            {
+              "code": "S212",
+              "amount": 350500000000,
+              "shareBasisPoints": 45
+            }
+          ]
+        },
+        {
+          "year": 2022,
+          "total": 83728900000000,
+          "sectors": [
+            {
+              "code": "S1311",
+              "amount": 49417300000000,
+              "shareBasisPoints": 5902
+            },
+            {
+              "code": "S1312",
+              "amount": null,
+              "shareBasisPoints": null
+            },
+            {
+              "code": "S1313",
+              "amount": 8155000000000,
+              "shareBasisPoints": 974
+            },
+            {
+              "code": "S1314",
+              "amount": 25647600000000,
+              "shareBasisPoints": 3063
+            },
+            {
+              "code": "S212",
+              "amount": 509000000000,
+              "shareBasisPoints": 61
+            }
+          ]
+        },
+        {
+          "year": 2023,
+          "total": 88719200000000,
+          "sectors": [
+            {
+              "code": "S1311",
+              "amount": 53261200000000,
+              "shareBasisPoints": 6003
+            },
+            {
+              "code": "S1312",
+              "amount": null,
+              "shareBasisPoints": null
+            },
+            {
+              "code": "S1313",
+              "amount": 8599800000000,
+              "shareBasisPoints": 969
+            },
+            {
+              "code": "S1314",
+              "amount": 26438800000000,
+              "shareBasisPoints": 2980
+            },
+            {
+              "code": "S212",
+              "amount": 419400000000,
+              "shareBasisPoints": 47
+            }
+          ]
+        },
+        {
+          "year": 2024,
+          "total": 93609900000000,
+          "sectors": [
+            {
+              "code": "S1311",
+              "amount": 56653600000000,
+              "shareBasisPoints": 6052
+            },
+            {
+              "code": "S1312",
+              "amount": null,
+              "shareBasisPoints": null
+            },
+            {
+              "code": "S1313",
+              "amount": 9224300000000,
+              "shareBasisPoints": 985
+            },
+            {
+              "code": "S1314",
+              "amount": 27433000000000,
+              "shareBasisPoints": 2931
+            },
+            {
+              "code": "S212",
+              "amount": 299000000000,
+              "shareBasisPoints": 32
+            }
+          ]
+        },
+        {
+          "year": 2025,
+          "total": 97577400000000,
+          "sectors": [
+            {
+              "code": "S1311",
+              "amount": 57697300000000,
+              "shareBasisPoints": 5913
+            },
+            {
+              "code": "S1312",
+              "amount": null,
+              "shareBasisPoints": null
+            },
+            {
+              "code": "S1313",
+              "amount": 9362600000000,
+              "shareBasisPoints": 960
+            },
+            {
+              "code": "S1314",
+              "amount": 30191400000000,
+              "shareBasisPoints": 3094
+            },
+            {
+              "code": "S212",
+              "amount": 326100000000,
+              "shareBasisPoints": 33
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "source": {
+    "id": "eurostat",
+    "owner": "Eurostat",
+    "title": "Main national accounts tax aggregates",
+    "datasetCode": "gov_10a_taxag",
+    "datasetUrl": "https://ec.europa.eu/eurostat/databrowser/view/gov_10a_taxag/default/table?lang=en",
+    "apiUrl": "https://ec.europa.eu/eurostat/api/dissemination/statistics/1.0/data/gov_10a_taxag?lang=en&freq=A&unit=MIO_EUR&sector=S13_S212&sector=S1311&sector=S1312&sector=S1313&sector=S1314&sector=S212&na_item=D2_D5_D91&na_item=D2_D5_D91_D61_M_D995&geo=IT&sinceTimePeriod=2016",
+    "termsUrl": "https://ec.europa.eu/eurostat/web/main/help/copyright-notice",
+    "retrievedAt": "2026-08-29T15:01:36Z",
+    "upstreamUpdatedAt": "2026-07-21T11:00:00+0200",
+    "cadence": "annuale",
+    "sourceUnit": "milioni di euro",
+    "transformation": "importi convertiti in centesimi interi; quote ricalcolate in punti base con arrotondamento half-up",
+    "bytes": 4935,
+    "sha256": "a7e1252e606122abb0915507bd5cc7691f09007829048cded77ffce7b4645493"
+  },
+  "caveats": [
+    "La quota di un sottosettore e una attribuzione contabile: indica dove l'imposta e registrata, non dove il denaro resta.",
+    "Fra amministrazioni esistono trasferimenti: una quota centrale alta non significa che la spesa avvenga al centro.",
+    "Le due misure hanno denominatori diversi e non vanno confrontate fra loro ne sommate.",
+    "Un importo assente resta assente: le Amministrazioni di livello statale federato non esistono in Italia e gli Enti di previdenza ricevono contributi, non imposte.",
+    "I dati recenti di contabilita nazionale possono essere rivisti da Eurostat."
+  ]
+}

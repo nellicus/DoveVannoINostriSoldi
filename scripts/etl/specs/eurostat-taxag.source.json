@@ -1,0 +1,59 @@
+{
+  "schemaVersion": 1,
+  "eurostat": {
+    "owner": "Eurostat",
+    "title": "Main national accounts tax aggregates",
+    "datasetCode": "gov_10a_taxag",
+    "datasetUrl": "https://ec.europa.eu/eurostat/databrowser/view/gov_10a_taxag/default/table?lang=en",
+    "apiUrl": "https://ec.europa.eu/eurostat/api/dissemination/statistics/1.0/data/gov_10a_taxag?lang=en&freq=A&unit=MIO_EUR&sector=S13_S212&sector=S1311&sector=S1312&sector=S1313&sector=S1314&sector=S212&na_item=D2_D5_D91&na_item=D2_D5_D91_D61_M_D995&geo=IT&sinceTimePeriod=2016",
+    "apiPath": "/eurostat/api/dissemination/statistics/1.0/data/gov_10a_taxag",
+    "termsUrl": "https://ec.europa.eu/eurostat/web/main/help/copyright-notice",
+    "allowedHost": "ec.europa.eu",
+    "cadence": "annuale",
+    "maxResponseBytes": 262144,
+    "dimensions": {
+      "freq": {
+        "code": "A",
+        "label": "Annual"
+      },
+      "unit": {
+        "code": "MIO_EUR",
+        "label": "Million euro"
+      },
+      "geo": {
+        "code": "IT",
+        "label": "Italy"
+      },
+      "sector": {
+        "total": "S13_S212",
+        "codes": [
+          "S13_S212",
+          "S1311",
+          "S1312",
+          "S1313",
+          "S1314",
+          "S212"
+        ],
+        "labels": {
+          "S13_S212": "General government; institutions of the EU",
+          "S1311": "Central government",
+          "S1312": "State government",
+          "S1313": "Local government",
+          "S1314": "Social security funds",
+          "S212": "Institutions and bodies of the European Union"
+        }
+      },
+      "na_item": {
+        "codes": [
+          "D2_D5_D91",
+          "D2_D5_D91_D61_M_D995"
+        ],
+        "labels": {
+          "D2_D5_D91": "Total tax receipts",
+          "D2_D5_D91_D61_M_D995": "Total receipts from taxes and social contributions (including imputed social contributions) after deduction of amounts assessed but unlikely to be collected"
+        }
+      }
+    },
+    "historyYears": 10
+  }
+}
