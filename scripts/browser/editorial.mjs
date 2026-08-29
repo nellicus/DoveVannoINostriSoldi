@@ -35,6 +35,15 @@ async function waitForInteractiveHydration(page) {
   }));
 }
 
+async function waitForDetailsState(page, summary, expectedOpen) {
+  await page.waitForFunction(
+    (element, open) => element.closest("details")?.open === open,
+    { timeout: 1_000 },
+    summary,
+    expectedOpen,
+  );
+}
+
 assert.ok(
   ["http:", "https:"].includes(baseUrl.protocol),
   "DVNS_BASE_URL non valido",
@@ -94,7 +103,10 @@ async function inspectRoute(browser, pathname, title, width) {
       let detailsState = await readDetailsState();
       assert.equal(detailsState.hasDetails, true, `${label}: summary senza details nativo`);
       assert.equal(detailsState.summaryVisible, true, `${label}: summary del confine non visibile`);
-      if (detailsState.open) await summary.click();
+      if (detailsState.open) {
+        await summary.click();
+        await waitForDetailsState(page, summary, false);
+      }
       detailsState = await readDetailsState();
       assert.equal(detailsState.open, false, `${label}: confine nativo non chiuso inizialmente`);
 
@@ -102,20 +114,27 @@ async function inspectRoute(browser, pathname, title, width) {
       const focused = await summary.evaluate((element) => document.activeElement === element);
       assert.equal(focused, true, `${label}: summary del confine non riceve il focus`);
       await page.keyboard.press("Enter");
+      await waitForDetailsState(page, summary, true);
       detailsState = await readDetailsState();
       if (!detailsState.open || !detailsState.contentVisible) {
-        if (detailsState.open) await summary.click();
+        if (detailsState.open) {
+          await summary.click();
+          await waitForDetailsState(page, summary, false);
+        }
         await summary.focus();
         await page.keyboard.press("Space");
+        await waitForDetailsState(page, summary, true);
         detailsState = await readDetailsState();
       }
       assert.equal(detailsState.open, true, `${label}: apertura da tastiera del confine fallita`);
       assert.equal(detailsState.contentVisible, true, `${label}: contenuto del confine non visibile`);
 
       await summary.click();
+      await waitForDetailsState(page, summary, false);
       detailsState = await readDetailsState();
       assert.equal(detailsState.open, false, `${label}: chiusura click del confine fallita`);
       await summary.click();
+      await waitForDetailsState(page, summary, true);
       detailsState = await readDetailsState();
       assert.equal(detailsState.open, true, `${label}: riapertura click del confine fallita`);
       assert.equal(detailsState.contentVisible, true, `${label}: contenuto non visibile dopo riapertura`);
