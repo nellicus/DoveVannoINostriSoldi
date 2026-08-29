@@ -379,12 +379,45 @@ function NavigationItem({
     search: string | null;
   } | null>>;
 }>) {
+  const itemRef = useRef<HTMLLIElement>(null);
+  const submenuRef = useRef<HTMLDivElement>(null);
   const active = isNavSectionActive(pathname, item);
   const hasChildren = Boolean(item.children?.length);
   const menuId = submenuId(item.href);
 
+  useLayoutEffect(() => {
+    if (!open) return;
+    const itemElement = itemRef.current;
+    const submenuElement = submenuRef.current;
+    if (!itemElement || !submenuElement) return;
+    const sidebar = itemElement.closest(".dashboard-sidebar");
+
+    const updatePosition = () => {
+      const itemRect = itemElement.getBoundingClientRect();
+      const submenuHeight = submenuElement.getBoundingClientRect().height;
+      const maxTop = Math.max(8, window.innerHeight - submenuHeight - 8);
+      const top = Math.min(Math.max(8, itemRect.top - 8), maxTop);
+      const sidebarRight = sidebar?.getBoundingClientRect().right ?? itemRect.right;
+      const left = Math.max(itemRect.right, sidebarRight) + 8;
+      submenuElement.style.setProperty("--nav-submenu-top", `${top}px`);
+      submenuElement.style.setProperty("--nav-submenu-left", `${left}px`);
+    };
+
+    updatePosition();
+    sidebar?.addEventListener("scroll", updatePosition, { passive: true });
+    window.addEventListener("resize", updatePosition);
+
+    return () => {
+      sidebar?.removeEventListener("scroll", updatePosition);
+      window.removeEventListener("resize", updatePosition);
+      submenuElement.style.removeProperty("--nav-submenu-top");
+      submenuElement.style.removeProperty("--nav-submenu-left");
+    };
+  }, [open]);
+
   return (
     <li
+      ref={itemRef}
       className={hasChildren ? "nav-item nav-item-has-menu" : "nav-item"}
       data-section-active={active ? "true" : undefined}
       data-open={open ? "true" : undefined}
@@ -419,7 +452,7 @@ function NavigationItem({
           >
             <HugeiconsIcon icon={ArrowDown01Icon} size={14} strokeWidth={1.8} aria-hidden="true" />
           </button>
-          <div className="nav-submenu" id={menuId} role="region" aria-label={`Pagine in ${item.label}`}>
+          <div ref={submenuRef} className="nav-submenu" id={menuId} role="region" aria-label={`Pagine in ${item.label}`}>
             <strong className="nav-submenu-title">{item.label}<span>{item.children.length} pagine</span></strong>
             <ul>
               {item.children.map((child) => (

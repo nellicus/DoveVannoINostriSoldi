@@ -391,9 +391,12 @@ nav li a { text-decoration: none; }
 .nav-item[data-section-active="true"] .nav-item-toggle { color: var(--color-text); }
 .nav-submenu {
   display: none;
-  position: absolute;
-  top: -8px;
-  left: calc(100% + 8px);
+  /* Fixed positioning lets the desktop flyout escape the sidebar's
+     vertical scroll container. Coordinates follow the trigger in the
+     component, including while the sidebar scrolls. */
+  position: fixed;
+  top: var(--nav-submenu-top, 0px);
+  left: var(--nav-submenu-left, 0px);
   z-index: 45;
   width: min(330px, calc(100vw - 240px));
   max-height: min(72vh, 580px);

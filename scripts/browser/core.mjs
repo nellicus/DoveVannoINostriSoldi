@@ -451,6 +451,135 @@ async function assertSpendingComposition(page, label) {
   assert.ok(state.visualWidth >= 80, `${label}: grafico di composizione non renderizzato`);
 }
 
+async function assertHomeTypography(page, label) {
+  const state = await page.$eval('main[data-dashboard-home]', (main) => {
+    const size = (element) => element ? Number.parseFloat(getComputedStyle(element).fontSize) : null;
+    const sectionWithHeading = (heading) => [...main.querySelectorAll("section")].find(
+      (section) => section.querySelector("h2")?.textContent?.trim() === heading,
+    );
+    const samples = [];
+    const add = (name, element, minimum) => samples.push({
+      name,
+      minimum,
+      pixels: size(element),
+      text: element?.textContent?.trim() ?? "",
+    });
+
+    add("titolo della pagina", main.querySelector("h1"), 28);
+    add("descrizione della pagina", main.querySelector("header p"), 13);
+    add("data di aggiornamento", main.querySelector("header small"), 11);
+
+    const filters = main.querySelector("header")?.lastElementChild;
+    add("etichetta del periodo", filters?.querySelector("details summary > span"), 10);
+    add(
+      "etichetta del livello geografico",
+      [...(filters?.children ?? [])].find((child) => child.tagName === "DIV")?.querySelector(":scope > span"),
+      10,
+    );
+
+    const summary = main.querySelector('section[aria-label="Indicatori principali"]');
+    const summaryLabels = [...(summary?.querySelectorAll("article > span") ?? [])];
+    const summaryNotes = [...(summary?.querySelectorAll("article > small") ?? [])];
+    for (const [index, element] of summaryLabels.entries()) {
+      add(`etichetta dell'indicatore ${index + 1}`, element, 11);
+    }
+    for (const [index, element] of summaryNotes.entries()) {
+      add(`nota dell'indicatore ${index + 1}`, element, 10);
+    }
+
+    const map = sectionWithHeading("Mappa dei pagamenti comunali");
+    const mapScopes = [...(map?.querySelectorAll('[class*="mapScope"]') ?? [])];
+    for (const [index, element] of mapScopes.entries()) {
+      add(`contesto della mappa ${index + 1}`, element, 10);
+    }
+
+    const anomalies = sectionWithHeading("Segnali pubblici da approfondire");
+    const anomalyText = [...(anomalies?.querySelectorAll('[class*="anomalyRow"] b, [class*="anomalyRow"] strong, [class*="anomalyRow"] small, [class*="anomalyRow"] em') ?? [])];
+    for (const [index, element] of anomalyText.entries()) {
+      add(`testo del segnale ${index + 1}`, element, 10);
+    }
+    const anomalyCaveat = [...(anomalies?.querySelectorAll("p") ?? [])].find((element) => element.textContent?.includes("Segnale da verificare"));
+    add(
+      "caveat dei segnali",
+      anomalyCaveat,
+      10,
+    );
+
+    const composition = sectionWithHeading("Pagamenti per titolo contabile");
+    const compositionContexts = [...(composition?.querySelectorAll('[class*="panelContext"]') ?? [])];
+    for (const [index, element] of compositionContexts.entries()) {
+      add(`contesto della composizione ${index + 1}`, element, 10);
+    }
+
+    const benchmark = sectionWithHeading("Regioni per pagamenti pro capite");
+    const benchmarkRows = [...(benchmark?.querySelectorAll('[class*="benchmarkList"] li') ?? [])];
+    for (const [index, element] of benchmarkRows.entries()) {
+      add(`riga del confronto ${index + 1}`, element, 9);
+    }
+
+    const trend = sectionWithHeading("Trend pagamenti comunali");
+    const trendLabels = [...(trend?.querySelectorAll('[class*="trendChart"] text') ?? [])];
+    for (const [index, element] of trendLabels.entries()) {
+      add(`etichetta del trend ${index + 1}`, element, 9);
+    }
+
+    const sources = sectionWithHeading("Da dove provengono i dati");
+    add("descrizione delle fonti", sources?.querySelector("p"), 10);
+    const sourceReferences = [...(sources?.querySelectorAll('[class*="sourceMarks"] a') ?? [])];
+    for (const [index, element] of sourceReferences.entries()) {
+      add(`riferimento alla fonte ${index + 1}`, element, 9);
+    }
+
+    const panels = [...main.querySelectorAll("section")].map((section) => ({
+      heading: section.querySelector("h2")?.textContent?.trim() ?? "",
+      clientHeight: section.clientHeight,
+      scrollHeight: section.scrollHeight,
+    }));
+
+    return {
+      groups: {
+        anomalyText: anomalyText.length,
+        benchmarkRows: benchmarkRows.length,
+        compositionContexts: compositionContexts.length,
+        mapScopes: mapScopes.length,
+        sourceReferences: sourceReferences.length,
+        summaryLabels: summaryLabels.length,
+        summaryNotes: summaryNotes.length,
+        trendLabels: trendLabels.length,
+      },
+      panels,
+      samples,
+    };
+  });
+
+  assert.deepEqual(
+    state.groups,
+    {
+      anomalyText: 25,
+      benchmarkRows: 7,
+      compositionContexts: 2,
+      mapScopes: 2,
+      sourceReferences: 5,
+      summaryLabels: 6,
+      summaryNotes: 6,
+      trendLabels: 11,
+    },
+    `${label}: campioni tipografici della home incompleti`,
+  );
+  for (const sample of state.samples) {
+    assert.ok(
+      sample.pixels !== null && Number.isFinite(sample.pixels) && sample.pixels >= sample.minimum,
+      `${label}: ${sample.name} (${JSON.stringify(sample.text)}) è ${sample.pixels ?? "assente"}px, minimo ${sample.minimum}px`,
+    );
+  }
+  for (const panel of state.panels) {
+    assert.ok(
+      panel.scrollHeight <= panel.clientHeight + 1,
+      `${label}: il pannello ${panel.heading || "senza titolo"} taglia il contenuto (${panel.scrollHeight}px > ${panel.clientHeight}px)`,
+    );
+  }
+}
+
 async function assertTableKeyboardScroll(page, label) {
   await page.waitForSelector(TABLE_REGION, { visible: true });
   const tableState = await page.$eval(TABLE_REGION, (region) => ({
@@ -562,6 +691,47 @@ async function assertSubmenuVisible(itemElement, page, label, childLabel) {
   assert.match(childText, new RegExp(childLabel, "i"), `${label}: voce ${childLabel} assente in tendina`);
 }
 
+async function assertDesktopSubmenuGeometry(itemElement, label) {
+  const geometry = await itemElement.$eval(".nav-submenu", (submenu) => {
+    const sidebar = submenu.closest(".dashboard-sidebar");
+    const submenuRect = submenu.getBoundingClientRect();
+    const sidebarRect = sidebar?.getBoundingClientRect();
+    return {
+      position: window.getComputedStyle(submenu).position,
+      submenu: {
+        left: submenuRect.left,
+        right: submenuRect.right,
+        bottom: submenuRect.bottom,
+        width: submenuRect.width,
+      },
+      sidebar: sidebarRect
+        ? { left: sidebarRect.left, right: sidebarRect.right }
+        : null,
+      viewportWidth: window.innerWidth,
+      viewportHeight: window.innerHeight,
+    };
+  });
+
+  assert.equal(geometry.position, "fixed", `${label}: il flyout desktop deve uscire dal contenitore scrollabile`);
+  assert.ok(geometry.sidebar, `${label}: contenitore sidebar assente`);
+  assert.ok(
+    geometry.submenu.width > 0,
+    `${label}: flyout desktop senza dimensioni visibili`,
+  );
+  assert.ok(
+    geometry.submenu.left >= geometry.sidebar.right - 1,
+    `${label}: flyout desktop ancora tagliato dalla sidebar`,
+  );
+  assert.ok(
+    geometry.submenu.right <= geometry.viewportWidth + 1,
+    `${label}: flyout desktop esce dal viewport`,
+  );
+  assert.ok(
+    geometry.submenu.bottom <= geometry.viewportHeight + 1,
+    `${label}: flyout desktop esce dal viewport in verticale`,
+  );
+}
+
 async function assertPrimaryDropdownOnly(page, label, { sectionLabel, childLabel }) {
   assert.equal(await page.$("nav.subnav"), null, `${label}: barra sottosezioni non attesa`);
   assert.equal(await page.$(".subnav-row"), null, `${label}: riga subnav non attesa`);
@@ -573,6 +743,7 @@ async function assertPrimaryDropdownOnly(page, label, { sectionLabel, childLabel
   assert.ok(toggle, `${label}: pulsante tendina assente`);
   await toggle.click();
   await assertSubmenuVisible(itemElement, page, label, childLabel);
+  await assertDesktopSubmenuGeometry(itemElement, label);
 }
 
 async function assertPrimaryDropdownExclusive(page, label, { fromLabel, toLabel }) {
@@ -1742,6 +1913,17 @@ try {
       pathname: "/",
       width,
       validate: async (page) => assertSpendingComposition(page, label),
+    });
+    completed.push(label);
+  }
+
+  for (const width of [390, 1280]) {
+    const label = `Tipografia informativa home ${width}px`;
+    await runScenario(browser, {
+      label,
+      pathname: "/",
+      width,
+      validate: async (page) => assertHomeTypography(page, label),
     });
     completed.push(label);
   }
