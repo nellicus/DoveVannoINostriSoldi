@@ -43,6 +43,10 @@ test("the home supporting rail forms a balanced grid without empty auto-fit cell
   ]);
 
   assert.match(css, /\.sourcesPanel \{[\s\S]*?grid-column:span 6/);
+  assert.match(css, /\.mapPanel \{[\s\S]*?width:100%;/);
+  assert.doesNotMatch(css, /width:calc\(100% \+/);
+  const anomalyPanelRule = css.match(/\.anomalyPanel \{([\s\S]*?)\}/)?.[1] ?? "";
+  assert.doesNotMatch(anomalyPanelRule, /margin-left:/);
   assert.match(css, /\.reportPanel \{[\s\S]*?grid-column:span 3/);
   assert.match(css, /\.commitmentPanel \{[\s\S]*?grid-column:span 3/);
   assert.doesNotMatch(css, /repeat\(auto-fit, minmax\(280px, 1fr\)\)/);
@@ -265,6 +269,7 @@ test("the relationship explorer uses its module styles and keeps result context"
   assert.match(explorer, /r\.period/);
   assert.match(explorer, /euro\.format\(r\.amount\)/);
   assert.match(explorer, /r\.confidence_note/);
+  assert.match(explorer, /aria-label=\{`Fonte: \$\{r\.subject_key\} → \$\{r\.object_key\}`\}/);
   assert.match(explorer, /new AbortController\(\)/);
   assert.match(explorer, /signal: controller\.signal/);
   assert.match(explorer, /sequence\.current !== currentSequence/);

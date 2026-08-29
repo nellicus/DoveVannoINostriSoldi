@@ -142,6 +142,7 @@ export function EsploraSearch({ initialCount }: { initialCount: number }) {
                 href={r.source_url}
                 target="_blank"
                 rel="noreferrer"
+                aria-label={`Fonte: ${r.subject_key} → ${r.object_key}`}
               >
                 fonte
               </a>
