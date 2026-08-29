@@ -35,10 +35,11 @@ export function HeaderSearch() {
   const showDropdown = open && trimmedQuery.length >= GLOBAL_SEARCH_MIN_QUERY_LENGTH;
 
   useEffect(() => {
+    const effectQuery = query.trim();
     const requestId = ++requestIdRef.current;
     abortRef.current?.abort();
 
-    if (trimmedQuery.length < GLOBAL_SEARCH_MIN_QUERY_LENGTH) {
+    if (effectQuery.length < GLOBAL_SEARCH_MIN_QUERY_LENGTH) {
       return;
     }
 
@@ -47,7 +48,7 @@ export function HeaderSearch() {
       abortRef.current = controller;
       setLoading(true);
 
-      fetch(`/api/search?q=${encodeURIComponent(trimmedQuery)}&limit=${SUGGESTION_LIMIT}`, {
+      fetch(`/api/search?q=${encodeURIComponent(effectQuery)}&limit=${SUGGESTION_LIMIT}`, {
         signal: controller.signal,
       })
         .then((request) => {
@@ -77,7 +78,7 @@ export function HeaderSearch() {
       abortRef.current?.abort();
       if (requestId === requestIdRef.current) requestIdRef.current += 1;
     };
-  }, [trimmedQuery]);
+  }, [query]);
 
   useEffect(() => {
     function handlePointerDown(event: PointerEvent) {
@@ -143,6 +144,7 @@ export function HeaderSearch() {
         maxLength={180}
         onChange={(event) => {
           const nextQuery = event.target.value;
+          requestIdRef.current += 1;
           abortRef.current?.abort();
           setQuery(nextQuery);
           setResponse(null);

@@ -225,13 +225,17 @@ function normalizedQueryTokens(value: string): string[] {
     .slice(0, IPA_SEARCH_MAX_QUERY_TOKENS);
 }
 
-async function datastoreRequest(params: URLSearchParams): Promise<IpaSearchResult> {
+async function datastoreRequest(
+  params: URLSearchParams,
+  signal?: AbortSignal,
+): Promise<IpaSearchResult> {
   params.set("resource_id", IPA_ENTI_RESOURCE_ID);
 
   const url = `${IPA_DATASTORE_SEARCH}?${params.toString()}`;
   const response = await fetchOfficialSource("ipa", url, {
     kind: "data",
     headers: { Accept: "application/json" },
+    signal,
     tags: ["dataset:ipa-enti"],
   });
 
@@ -259,6 +263,7 @@ export async function searchIpaEntities(options: {
   offset?: number;
   categoryCode?: string;
   natureCode?: string;
+  signal?: AbortSignal;
 } = {}): Promise<IpaSearchResult> {
   const params = new URLSearchParams();
   params.set("limit", String(clamp(options.limit ?? 20, 0, 100)));
@@ -274,7 +279,7 @@ export async function searchIpaEntities(options: {
   if (natureCode) filters.Codice_natura = natureCode;
   if (Object.keys(filters).length > 0) params.set("filters", JSON.stringify(filters));
 
-  return datastoreRequest(params);
+  return datastoreRequest(params, options.signal);
 }
 
 /**
@@ -291,13 +296,14 @@ export async function searchIpaEntities(options: {
 export async function searchIpaEntitiesByPrefix(options: {
   query: string;
   limit?: number;
+  signal?: AbortSignal;
 }): Promise<IpaSearchResult> {
   const query = options.query.trim().slice(0, IPA_SEARCH_MAX_QUERY_LENGTH);
   const queryTokens = normalizedQueryTokens(query);
   const limit = clamp(options.limit ?? 20, 1, IPA_SEARCH_MAX_LIMIT);
 
   if (queryTokens.length === 0) {
-    return searchIpaEntities({ limit });
+    return searchIpaEntities({ limit, signal: options.signal });
   }
 
   const predicates = queryTokens.map(tokenSearchPredicate).map((predicate) => `(${predicate})`);
@@ -312,6 +318,7 @@ export async function searchIpaEntitiesByPrefix(options: {
   const response = await fetchOfficialSource("ipa", sourceUrl, {
     kind: "data",
     headers: { Accept: "application/json" },
+    signal: options.signal,
     tags: ["dataset:ipa-enti", "view:global-search"],
   });
 

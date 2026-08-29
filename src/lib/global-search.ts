@@ -499,6 +499,7 @@ function safeLimit(value: number | undefined): number {
 export async function searchGlobal(input: {
   query: string;
   limit?: number;
+  signal?: AbortSignal;
 }): Promise<GlobalSearchResponse> {
   const query = input.query.trim().slice(0, GLOBAL_SEARCH_MAX_QUERY_LENGTH);
   const normalizedQuery = normalizeSearchText(query);
@@ -517,16 +518,27 @@ export async function searchGlobal(input: {
       entitySearch = await searchIpaEntitiesByPrefix({
         query: normalizedQuery,
         limit: entityLimit,
+        signal: input.signal,
       });
-    } catch {
+    } catch (error) {
+      if (input.signal?.aborted) throw input.signal.reason ?? error;
       // Keep the existing full-text adapter as a fail-safe when the optional
       // SQL search endpoint is unavailable upstream.
-      entitySearch = await searchIpaEntities({ query: normalizedQuery, limit: entityLimit });
+      entitySearch = await searchIpaEntities({
+        query: normalizedQuery,
+        limit: entityLimit,
+        signal: input.signal,
+      });
     }
     entityTotal = entitySearch.total;
     entityResults = [...rankEntitySearchResults(entitySearch.records, normalizedQuery)];
-  } catch {
+  } catch (error) {
+    if (input.signal?.aborted) throw input.signal.reason ?? error;
     entitiesAvailable = false;
+  }
+
+  if (input.signal?.aborted) {
+    throw input.signal.reason ?? new Error("Ricerca annullata");
   }
 
   const byHref = new Map<string, SearchResult>();
