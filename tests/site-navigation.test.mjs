@@ -75,6 +75,48 @@ test("a submenu can be opened without a pointer that can hover", async () => {
   assert.match(navigationComponent, /aria-controls="dashboard-sidebar"/);
 });
 
+test("mobile drawer is hidden from assistive technology when closed and search stays in the viewport", async () => {
+  const navigationComponent = await readFile(
+    new URL("../src/components/navigation.tsx", import.meta.url),
+    "utf8",
+  );
+  assert.match(navigationComponent, /useSyncExternalStore/);
+  assert.match(navigationComponent, /const mobileDrawerHidden = isMobileViewport && !mobileOpen;/);
+  assert.match(navigationComponent, /aria-hidden=\{mobileDrawerHidden \? true : undefined\}/);
+  assert.match(navigationComponent, /inert=\{mobileDrawerHidden\}/);
+  assert.match(navigationComponent, /window\.requestAnimationFrame\(\(\) => mobileToggleRef\.current\?\.focus\(\)\)/);
+  assert.match(
+    globalsCss,
+    /@media \(max-width: 900px\) \{[\s\S]*?\.header-search \{[\s\S]*?transform: none;[\s\S]*?\n  \}/,
+  );
+});
+
+test("switching to desktop closes the mobile drawer without restoring focus to its hidden toggle", async () => {
+  const navigationComponent = await readFile(
+    new URL("../src/components/navigation.tsx", import.meta.url),
+    "utf8",
+  );
+
+  assert.match(
+    navigationComponent,
+    /const shouldRestoreFocus = isMobileViewport && mobileOpen;/,
+  );
+  assert.match(
+    navigationComponent,
+    /const resetMobileNavigationOnDesktop = useCallback\(\(\) => setMobileOpen\(false\), \[\]\);/,
+  );
+  assert.match(
+    navigationComponent,
+    /const subscribeToViewport = useCallback\([\s\S]*?subscribeToMobileNavViewport\([\s\S]*?onChange,[\s\S]*?resetMobileNavigationOnDesktop,[\s\S]*?moveFocusOutOfClosingSidebar,[\s\S]*?\);\s*const isMobileViewport = useSyncExternalStore\(\s*subscribeToViewport,/,
+  );
+  assert.match(
+    navigationComponent,
+    /const handleChange = \(event: MediaQueryListEvent\) => \{\s*if \(event\.matches\) onMobile\?\.\(\);\s*else onDesktop\?\.\(\);\s*onChange\(\);/,
+  );
+  assert.match(navigationComponent, /sidebarRef\.current\?\.contains\(document\.activeElement\)/);
+  assert.match(navigationComponent, /mobileToggleRef\.current\?\.focus\(\)/);
+});
+
 test("reference dashboard taxonomy keeps every canonical destination reachable", () => {
   const hrefs = (sections) => new Set(
     sections.flatMap((section) => [section.href, ...(section.children ?? []).map((child) => child.href)]),

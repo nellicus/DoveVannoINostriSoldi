@@ -3,7 +3,16 @@
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
-import { Fragment, Suspense, useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
+import {
+  Fragment,
+  Suspense,
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+  useSyncExternalStore,
+} from "react";
 import { HugeiconsIcon } from "@hugeicons/react";
 import {
   AiBrain02Icon,
@@ -57,6 +66,31 @@ function submenuId(href: string) {
   return `nav-menu-${href === "/" ? "overview" : href.slice(1).replaceAll("/", "-")}`;
 }
 
+const MOBILE_NAV_MEDIA_QUERY = "(max-width: 900px)";
+
+function subscribeToMobileNavViewport(
+  onChange: () => void,
+  onDesktop?: () => void,
+  onMobile?: () => void,
+) {
+  const mediaQuery = window.matchMedia(MOBILE_NAV_MEDIA_QUERY);
+  const handleChange = (event: MediaQueryListEvent) => {
+    if (event.matches) onMobile?.();
+    else onDesktop?.();
+    onChange();
+  };
+  mediaQuery.addEventListener("change", handleChange);
+  return () => mediaQuery.removeEventListener("change", handleChange);
+}
+
+function getMobileNavViewportSnapshot() {
+  return window.matchMedia(MOBILE_NAV_MEDIA_QUERY).matches;
+}
+
+function getMobileNavViewportServerSnapshot() {
+  return false;
+}
+
 export function Navigation() {
   const pathname = usePathname();
   const [currentSearch, setCurrentSearch] = useState<string | null>(null);
@@ -86,6 +120,26 @@ function NavigationContent({ pathname, currentSearch }: NavigationContentProps) 
   const sidebarRef = useRef<HTMLElement>(null);
   const mobileToggleRef = useRef<HTMLButtonElement>(null);
   const [mobileOpen, setMobileOpen] = useState(false);
+  const resetMobileNavigationOnDesktop = useCallback(() => setMobileOpen(false), []);
+  const moveFocusOutOfClosingSidebar = useCallback(() => {
+    if (sidebarRef.current?.contains(document.activeElement)) {
+      mobileToggleRef.current?.focus();
+    }
+  }, []);
+  const subscribeToViewport = useCallback(
+    (onChange: () => void) => subscribeToMobileNavViewport(
+      onChange,
+      resetMobileNavigationOnDesktop,
+      moveFocusOutOfClosingSidebar,
+    ),
+    [moveFocusOutOfClosingSidebar, resetMobileNavigationOnDesktop],
+  );
+  const isMobileViewport = useSyncExternalStore(
+    subscribeToViewport,
+    getMobileNavViewportSnapshot,
+    getMobileNavViewportServerSnapshot,
+  );
+  const mobileDrawerHidden = isMobileViewport && !mobileOpen;
   const [openMenu, setOpenMenu] = useState<{
     href: string;
     pathname: string;
@@ -99,9 +153,13 @@ function NavigationContent({ pathname, currentSearch }: NavigationContentProps) 
 
   const closeMenu = useCallback(() => setOpenMenu(null), []);
   const closeNavigation = useCallback(() => {
+    const shouldRestoreFocus = isMobileViewport && mobileOpen;
     setOpenMenu(null);
     setMobileOpen(false);
-  }, []);
+    if (shouldRestoreFocus) {
+      window.requestAnimationFrame(() => mobileToggleRef.current?.focus());
+    }
+  }, [isMobileViewport, mobileOpen]);
   const openItem = useCallback(
     (href: string) => setOpenMenu({ href, pathname, search: currentSearch }),
     [currentSearch, pathname],
@@ -133,7 +191,7 @@ function NavigationContent({ pathname, currentSearch }: NavigationContentProps) 
       const menuTrigger = openHref
         ? navigationRef.current?.querySelector<HTMLButtonElement>(`[aria-controls="${submenuId(openHref)}"]`)
         : null;
-      const returnTarget = mobileOpen ? mobileToggleRef.current : menuTrigger;
+      const returnTarget = mobileOpen ? null : menuTrigger;
       closeNavigation();
       window.requestAnimationFrame(() => returnTarget?.focus());
     }
@@ -155,6 +213,14 @@ function NavigationContent({ pathname, currentSearch }: NavigationContentProps) 
     };
   }, [mobileOpen]);
 
+  const toggleMobileNavigation = useCallback(() => {
+    if (mobileOpen) {
+      closeNavigation();
+      return;
+    }
+    setMobileOpen(true);
+  }, [closeNavigation, mobileOpen]);
+
   return (
     <>
       <header className="site-header">
@@ -166,7 +232,7 @@ function NavigationContent({ pathname, currentSearch }: NavigationContentProps) 
             aria-expanded={mobileOpen}
             aria-controls="dashboard-sidebar"
             aria-label={mobileOpen ? "Chiudi la navigazione" : "Apri la navigazione"}
-            onClick={() => setMobileOpen((open) => !open)}
+            onClick={toggleMobileNavigation}
           >
             <HugeiconsIcon
               icon={mobileOpen ? Cancel01Icon : Menu04Icon}
@@ -226,6 +292,8 @@ function NavigationContent({ pathname, currentSearch }: NavigationContentProps) 
         id="dashboard-sidebar"
         className="dashboard-sidebar"
         data-mobile-open={mobileOpen ? "true" : undefined}
+        aria-hidden={mobileDrawerHidden ? true : undefined}
+        inert={mobileDrawerHidden}
       >
         <nav
           className="primary-nav"

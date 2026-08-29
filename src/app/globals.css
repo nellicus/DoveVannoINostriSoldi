@@ -857,6 +857,7 @@ main { display: block; }
     grid-column: 1 / -1;
     grid-row: 2;
     width: 100%;
+    transform: none;
     padding-bottom: 10px;
   }
   .header-actions { grid-column: 3; grid-row: 1; }
