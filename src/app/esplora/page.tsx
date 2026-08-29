@@ -1,10 +1,11 @@
+import type { Metadata } from "next";
 import { EsploraSearch } from "./EsploraSearch";
 import Link from "next/link";
 import { loadInvestigativeMeta } from "@/lib/investigative-explorer";
 import styles from "./esplora.module.css";
 
-export const metadata = {
-  title: "Esplora relazioni · Dove vanno i nostri soldi?",
+export const metadata: Metadata = {
+  title: "Esplora relazioni",
   description:
     "Ricerca trasversale di persone ed enti negli incarichi pubblici (fetta incarichi-nominativi-shard). I riferimenti CIG/CUP e di atto sono in nota e ricercabili.",
 };
@@ -24,7 +25,7 @@ export default function EsploraPage() {
           Fetta verticale su <code>incarichi-nominativi-shard</code>: ogni arco collega una
           persona a un ente (incarico). Su{" "}
           <strong>{searchable.toLocaleString("it-IT")}</strong> relazioni ricercabili, i
-          riferimenti CIG/CUP e di atto compaiono in nota ed sono ricercabili. Non fondiamo
+          riferimenti CIG/CUP e di atto compaiono in nota e sono ricercabili. Non fondiamo
           persone con lo stesso nome senza un id stabile.
         </p>
         {suspects > 0 ? (

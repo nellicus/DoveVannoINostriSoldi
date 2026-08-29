@@ -299,8 +299,8 @@ function SpendingDashboard({ snapshot }: { snapshot: StateSpendingSnapshot }) {
               <table className="table">
                 <thead>
                   <tr>
-                    <th>Amministrazione</th>
-                    <th>Pagato</th>
+                    <th scope="col">Amministrazione</th>
+                    <th scope="col">Pagato</th>
                   </tr>
                 </thead>
                 <tbody>
