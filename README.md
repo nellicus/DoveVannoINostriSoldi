@@ -139,6 +139,12 @@ La route `/debito`, `GET /api/debito` e il dataset MCP `debito_pubblico_italiano
 usano lo stesso snapshot verificato di Banca d'Italia ed Eurostat. Il refresh
 live è atomico; la CI delle pull request usa esclusivamente fixture offline.
 
+La route `/entrate-fiscali`, `GET /api/entrate-fiscali` e il dataset MCP
+`eurostat_entrate_sottosettore` espongono lo snapshot Eurostat `gov_10a_taxag`
+delle imposte per sottosettore istituzionale. Le due misure pubblicate hanno
+denominatori diversi e non vanno confrontate fra loro: dettagli in
+[docs/EUROSTAT_GOV_10A_TAXAG.md](docs/EUROSTAT_GOV_10A_TAXAG.md).
+
 Politica di freschezza: [docs/FRESHNESS_AND_REFRESH.md](docs/FRESHNESS_AND_REFRESH.md).
 
 ### Struttura del repository

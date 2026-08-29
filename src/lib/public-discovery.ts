@@ -23,6 +23,7 @@ export const PUBLIC_INDEXABLE_PATHS = [
   "/dati",
   "/debito",
   "/enti",
+  "/entrate-fiscali",
   "/esplora",
   "/fonti",
   "/fonti/catalogo",

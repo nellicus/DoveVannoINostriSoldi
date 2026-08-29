@@ -722,7 +722,11 @@
       "reconciliationTests": [
         "tests/etl/test_eurostat_tax_aggregates.py"
       ],
-      "nodeTests": [],
+      "nodeTests": [
+        "tests/eurostat-taxag-contract.test.mjs",
+        "tests/eurostat-taxag-route.test.mjs",
+        "tests/eurostat-taxag-ui.test.mjs"
+      ],
       "generator": {
         "command": "python scripts/etl/eurostat_tax_aggregates.py",
         "requiresNetworkInput": true

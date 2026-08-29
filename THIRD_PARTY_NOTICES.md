@@ -156,6 +156,17 @@ Attribution: `Banca d'Italia, Finanza pubblica: fabbisogno e debito. Selected se
 
 Attribution: `Eurostat, Government revenue, expenditure and main aggregates. Data adapted by DoveVannoINostriSoldi.`
 
+## Eurostat tax aggregates by subsector
+
+- **Work:** `gov_10a_taxag`, items `D2_D5_D91` and `D2_D5_D91_D61_M_D995`, subsectors `S13_S212`, `S1311`, `S1312`, `S1313`, `S1314` and `S212`, unit `MIO_EUR`, Italy;
+- **Publisher:** Eurostat;
+- **Source:** https://ec.europa.eu/eurostat/databrowser/view/gov_10a_taxag/default/table?lang=en;
+- **Reuse terms:** https://ec.europa.eu/eurostat/web/main/help/copyright-notice;
+- **Accessed:** 2026-08-29 (snapshot timestamp retained in `src/data/generated/eurostat-taxag.json`);
+- **Changes:** ten annual observations are converted from millions of euro to integer cents, which does not add cent-level measurement precision. Subsector shares are derived from the amounts in integer basis points with half-up rounding; the published `PC_TOT` unit is not used, because it expresses each subsector's share of its own total receipts rather than the share between subsectors. Cells absent upstream are kept absent and are never rendered as zero.
+
+Attribution: `Eurostat, Main national accounts tax aggregates. Data adapted by DoveVannoINostriSoldi.`
+
 ## Atlante Imprese Italia aggregate data
 
 - **Works:** stock of active enterprises, active employees and local units, and production-value bands;

@@ -161,6 +161,7 @@ variazione semantica continua a richiedere l'intera validazione.
 | Senato della Repubblica | su pubblicazione | 6 h | 12 h |
 | Banca d'Italia · debito pubblico | mensile, circa 45 giorni di ritardo | controllo giornaliero 06:17 UTC | snapshot versionato; stale oltre 75 giorni |
 | Eurostat · interessi e spesa totale | annuale | controllo giornaliero 06:17 UTC | snapshot versionato; warning oltre 540 giorni |
+| Eurostat · imposte per sottosettore | annuale | verifica settimanale lunedì 07:43 UTC | snapshot versionato; warning oltre 540 giorni |
 
 Camera ha un riepilogo strutturato con data del documento. Senato resta documentale: i nuovi atti vengono collegati, ma i valori non sono pubblicati finché non superano una normalizzazione verificabile.
 

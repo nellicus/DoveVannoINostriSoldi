@@ -406,6 +406,33 @@ Altre fonti da valutare nella fase 2:
 - serie storica OpenCivitas 2015-2022 e singole funzioni comunali;
 - Corte dei conti per contesto e referti, senza confondere contestazioni, sentenze e dati di spesa.
 
+### Imposte per sottosettore istituzionale
+
+**Dataset:** [`gov_10a_taxag`](https://ec.europa.eu/eurostat/databrowser/view/gov_10a_taxag/default/table?lang=en) · Main national accounts tax aggregates
+**Titolare:** Eurostat
+**Periodo:** dieci anni annuali, Italia
+**Condizioni di riuso:** [copyright notice Eurostat](https://ec.europa.eu/eurostat/web/main/help/copyright-notice)
+**Formato:** Statistics API · JSON-stat 2.0 · snapshot JSON verificato, source lock in `scripts/etl/specs/eurostat-taxag.source.json`
+
+Lo snapshot conserva due aggregati con denominatori diversi, `D2_D5_D91` e
+`D2_D5_D91_D61_M_D995`: la quota contabilizzata dalle amministrazioni centrali
+vale 85,7% sulle sole imposte e 59,1% includendo i contributi sociali. Le due
+misure non vanno confrontate fra loro né sommate, e nessuna viene pubblicata
+senza dichiarare il proprio denominatore.
+
+Le quote sono ricalcolate dagli importi in punti base. L'unità `PC_TOT`
+pubblicata da Eurostat non viene usata perché esprime la quota di ciascun
+sottosettore sul proprio totale, non la ripartizione fra sottosettori.
+
+Il dato dice dove l'imposta è contabilizzata, **non** dove il denaro resta: fra
+amministrazioni esistono trasferimenti. Non misura autonomia fiscale né spesa.
+Un importo assente resta assente: le amministrazioni di livello statale
+federato non esistono in Italia e gli enti di previdenza ricevono contributi,
+non imposte.
+
+Metodo, riconciliazioni e procedura di refresh sono documentati in
+[EUROSTAT_GOV_10A_TAXAG.md](EUROSTAT_GOV_10A_TAXAG.md).
+
 ### Debito pubblico italiano
 
 La pagina `/debito` usa esclusivamente i cubi BDS di Banca d'Italia
